@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("kotlin-parcelize")
     kotlin("kapt")
     id("com.google.dagger.hilt.android")
 }
@@ -74,6 +75,9 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
+    //material 3
+    implementation("androidx.compose.material3:material3:1.2.0")
+
     //dagger hilt
     implementation("com.google.dagger:hilt-android:2.44")
     kapt("com.google.dagger:hilt-android-compiler:2.44")
@@ -86,6 +90,10 @@ dependencies {
     // LiveData
     // Lifecycle utilities for Compose
     implementation("androidx.lifecycle:lifecycle-runtime-compose:$lifecycleVersion")
+
+    val nav_version = "2.7.7"
+
+    implementation("androidx.navigation:navigation-compose:$nav_version")
 }
 kapt {
     correctErrorTypes = true

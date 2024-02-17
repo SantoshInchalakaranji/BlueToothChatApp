@@ -1,12 +1,32 @@
 package com.prplmnstr.bluetoothchat.domain.chat
 
-import java.util.Date
 
-data class BluetoothMessage(
-    val message: String,
-    val date: String,
-    val time: String,
-    val senderName: String,
-    val senderAddress:String,
-    val isFromLocalUser: Boolean
-)
+
+sealed class BluetoothMessage {
+    data class TextMessage(
+        val text: String,
+        val date: String,
+        val time: String,
+        val senderName: String,
+        var senderAddress: String,
+        val isFromLocalUser: Boolean
+    ) : BluetoothMessage()
+
+    data class ImageMessage(
+        val imageData: ByteArray,
+        val date: String,
+        val time: String,
+        val senderName: String,
+        val senderAddress: String,
+        val isFromLocalUser: Boolean
+    ) : BluetoothMessage()
+
+    data class AudioMessage(
+        val audioData: ByteArray,
+        val date: String,
+        val time: String,
+        val senderName: String,
+        var senderAddress: String,
+        val isFromLocalUser: Boolean
+    ) : BluetoothMessage()
+}

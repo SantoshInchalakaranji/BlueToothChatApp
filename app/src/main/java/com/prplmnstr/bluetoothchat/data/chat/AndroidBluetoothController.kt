@@ -3,6 +3,7 @@ package com.prplmnstr.bluetoothchat.data.chat
 import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothClass
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothServerSocket
@@ -10,6 +11,7 @@ import android.bluetooth.BluetoothSocket
 import android.content.Context
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.provider.Settings
 import android.util.Log
 import androidx.core.app.ActivityCompat
 import com.prplmnstr.bluetoothchat.domain.chat.BluetoothController
@@ -33,6 +35,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.File
 import java.io.IOException
 import java.util.UUID
 
@@ -57,6 +60,11 @@ class AndroidBluetoothController(
         get() = _isConnected.asStateFlow()
 
 
+
+    private val _connectedDevice = MutableStateFlow(BluetoothDeviceDomain("",""))
+    override val connectedDevice: StateFlow<BluetoothDeviceDomain>
+            get() = _connectedDevice.asStateFlow()
+
     private val _scannedDevices = MutableStateFlow<List<BluetoothDeviceDomain>>(emptyList())
     override val scannedDevices: StateFlow<List<BluetoothDeviceDomain>>
         get() = _scannedDevices.asStateFlow()
@@ -71,11 +79,15 @@ class AndroidBluetoothController(
 
 
     private val foundDeviceReceiver  = FoundDeviceReceiver{device->
-        _scannedDevices.update { devices->
-            Log.e("TAG", "scanner : yes ")
-            val newDevice = device.toBluetoothDeviceDomain()
-            if(newDevice in devices) devices else devices + newDevice
+
+            _scannedDevices.update { devices->
+                Log.d("TAG", "scanner : yes ")
+                val newDevice = device.toBluetoothDeviceDomain()
+
+                if(newDevice in devices) devices else devices + newDevice
+
         }
+
 
 
     }
@@ -83,6 +95,8 @@ class AndroidBluetoothController(
     private val bluetoothStateReceiver = BluetoothStateReceiver { isConnected, bluetoothDevice ->
         if(bluetoothAdapter?.bondedDevices?.contains(bluetoothDevice) == true) {
             _isConnected.update { isConnected }
+            _connectedDevice.update { bluetoothDevice.toBluetoothDeviceDomain() }
+
         } else {
             CoroutineScope(Dispatchers.IO).launch {
                 _errors.emit("Can't connect to a non-paired device.")
@@ -95,7 +109,9 @@ class AndroidBluetoothController(
 
     init {
         updatePairedDevices()
+        Log.e("TAG", "Registered  : bluetoothStateReceiver ")
         context.registerReceiver(
+
             bluetoothStateReceiver,
             IntentFilter().apply {
                 addAction(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED)
@@ -106,13 +122,14 @@ class AndroidBluetoothController(
     }
 
 
+
     override fun startDiscovery() {
 //        if( !hasPermission(Manifest.permission.BLUETOOTH_SCAN)
 //            ){
 //            Log.e("TAG", "scanner : No ")
 //          return
 //        }
-        Log.e("TAG", "scanner : Yes ")
+        Log.e("TAG", "Registered  : foundDeviceReceiver ")
 
         context.registerReceiver(
             foundDeviceReceiver,
@@ -151,7 +168,7 @@ class AndroidBluetoothController(
                     shouldLoop = false
                     null
                 }
-                emit(ConnectionResult.ConnectionEstablished)
+                emit(ConnectionResult.ConnectionEstablished(_connectedDevice.value))
                 currentClientSocket?.let {
                     currentServerSocket?.close()
                     val service = BluetoothDataTransferService(it)
@@ -189,19 +206,24 @@ class AndroidBluetoothController(
             currentClientSocket?.let { socket ->
                 try {
                     socket.connect()
-                    emit(ConnectionResult.ConnectionEstablished)
+                    emit(ConnectionResult.ConnectionEstablished(_connectedDevice.value))
 
                     BluetoothDataTransferService(socket).also {
                         dataTransferService = it
                         emitAll(
                             it.listenForIncomingMessages()
-                                .map { ConnectionResult.TransferSucceeded(it) }
+
+                                .map {bluetoothMessage->
+
+                                    ConnectionResult.TransferSucceeded(bluetoothMessage)
+                                }
                         )
                     }
                 } catch(e: IOException) {
-                    socket.close()
-                    currentClientSocket = null
-                    emit(ConnectionResult.Error("Connection was interrupted"))
+                    Log.d("TAG", "connectToDevice: ${e.toString()}")
+                   // socket.close()
+                  //  currentClientSocket = null
+                  //  emit(ConnectionResult.Error("Connection was interrupted"))
                 }
             }
         }.onCompletion {
@@ -219,17 +241,45 @@ class AndroidBluetoothController(
             return null
         }
 
-        val bluetoothMessage = BluetoothMessage(
-            message = message,
+        val bluetoothMessage = BluetoothMessage.TextMessage(
+            text = message,
             senderName = bluetoothAdapter?.name ?: "Unknown name",
-            senderAddress = bluetoothAdapter?.address!! ,
+            senderAddress = "" ,
             date = DateAndTime.getTodayDate(),
             time = DateAndTime.getCurrentTime(),
             isFromLocalUser = true
         )
 
         dataTransferService?.sendMessage(bluetoothMessage.toByteArray())
+        bluetoothMessage.senderAddress = _connectedDevice.value.address
 
+        return bluetoothMessage
+    }
+
+    @SuppressLint("HardwareIds")
+    override suspend fun trySendMessage(audioData : File): BluetoothMessage? {
+//        if(!hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) {
+//            return null
+//        }
+
+        Log.e("TAG", "trySendMessage  : came")
+        if(dataTransferService == null) {
+            return null
+        }
+
+        val bluetoothMessage = BluetoothMessage.AudioMessage(
+            audioData = audioData.readBytes(),
+            senderName = bluetoothAdapter?.name ?: "Unknown name",
+            senderAddress = "" ,
+            date = DateAndTime.getTodayDate(),
+            time = DateAndTime.getCurrentTime(),
+            isFromLocalUser = true
+        )
+
+       // dataTransferService?.sendMessage(bluetoothMessage.toByteArray())
+
+        Log.e("TAG", "dataTransferService  : came")
+        bluetoothMessage.senderAddress = _connectedDevice.value.address
         return bluetoothMessage
     }
 
@@ -238,12 +288,18 @@ class AndroidBluetoothController(
         currentServerSocket?.close()
         currentClientSocket = null
         currentServerSocket = null
+      //  release()
     }
 
     override fun release() {
-      context.unregisterReceiver(foundDeviceReceiver)
-        context.unregisterReceiver(bluetoothStateReceiver)
-        closeConnection()
+       try {
+           context.unregisterReceiver(foundDeviceReceiver)
+           context.unregisterReceiver(bluetoothStateReceiver)
+           closeConnection()
+       }catch (e:Exception){
+           Log.e("TAG", "release: ${e.toString()}", )
+       }
+
     }
 
 
@@ -256,7 +312,10 @@ class AndroidBluetoothController(
 //        }
         bluetoothAdapter
             ?.bondedDevices
-            ?.map {
+            ?.filter {
+                it.bluetoothClass.deviceClass==BluetoothClass.Device.PHONE_SMART
+            }
+        ?.map {
                 it.toBluetoothDeviceDomain()
             }
             ?.also {devices->

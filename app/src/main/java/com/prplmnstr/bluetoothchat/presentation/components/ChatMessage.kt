@@ -25,7 +25,7 @@ import com.prplmnstr.bluetoothchat.ui.theme.LightRed
 
 @Composable
 fun ChatMessage(
-    message: BluetoothMessage,
+    message: BluetoothMessage.TextMessage,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -45,7 +45,7 @@ fun ChatMessage(
     ) {
 
         Text(
-            text = message.message,
+            text = message.text,
             color = Color.Black,
             modifier = Modifier.widthIn(max = 250.dp)
         )
@@ -63,8 +63,8 @@ fun ChatMessage(
 fun ChatMessagePreview() {
         BlueToothChatTheme {
             ChatMessage(
-                message = BluetoothMessage(
-                    message = "Hello World! How are you I am not well hope uou doing well",
+                message = BluetoothMessage.TextMessage(
+                    text = "Hello World! How are you I am not well hope uou doing well",
                     senderName = "Pixel 6",
                     senderAddress = "address",
                     date = "11, Jan",

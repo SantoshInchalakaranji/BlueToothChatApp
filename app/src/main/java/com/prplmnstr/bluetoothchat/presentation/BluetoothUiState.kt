@@ -1,6 +1,7 @@
 package com.prplmnstr.bluetoothchat.presentation
 
 import com.prplmnstr.bluetoothchat.domain.chat.BluetoothDevice
+import com.prplmnstr.bluetoothchat.domain.chat.BluetoothDeviceDomain
 import com.prplmnstr.bluetoothchat.domain.chat.BluetoothMessage
 
 data class BluetoothUiState(
@@ -10,6 +11,7 @@ data class BluetoothUiState(
     val isConnected: Boolean = false,
     val isConnecting: Boolean = false,
     val errorMessage: String? = null,
-    val peerName:String? = ""
+
+    var peerDevice:BluetoothDeviceDomain? = null
 
 )

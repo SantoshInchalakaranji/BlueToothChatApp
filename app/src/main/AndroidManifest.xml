@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Request legacy Bluetooth permissions for devices on API 29,30. -->
     <uses-permission
         android:name="android.permission.BLUETOOTH"

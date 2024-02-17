@@ -1,5 +1,6 @@
 package com.prplmnstr.bluetoothchat.presentation.components
 
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,65 +10,131 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.currentCompositionLocalContext
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import androidx.navigation.navArgument
 import com.prplmnstr.bluetoothchat.domain.chat.BluetoothDevice
+import com.prplmnstr.bluetoothchat.domain.chat.BluetoothDeviceDomain
 import com.prplmnstr.bluetoothchat.presentation.BluetoothUiState
+import com.prplmnstr.bluetoothchat.presentation.BluetoothViewModel
 
 @Composable
 fun DeviceScreen(
-    state: BluetoothUiState,
-    onStartScan: () -> Unit,
-    onStopScan: () -> Unit,
-    onStartServer: () -> Unit,
-    onDeviceClick: (BluetoothDevice) -> Unit
+        navController: NavController,
+        state: BluetoothUiState,
+        onStartScan: () -> Unit,
+        onStopScan: () -> Unit,
+        onStartServer: () -> Unit,
+        onDeviceClick: (BluetoothDevice) -> Unit
 ) {
+    if(state.isConnected){
+        navController.navigate(
+            route = Routes.CHAT_SCREEN,
+        )
+    }
+
+   // val state by viewModel.state.collectAsState()
     Column(
         modifier = Modifier
             .fillMaxSize()
     ) {
 
         BluetoothDeviceList(
+            onStartScan,
+            onStopScan,
             pairedDevices = state.pairedDevices,
             scannedDevices = state.scannedDevices,
-            onClick = onDeviceClick,
+            onClick = {
+                state.peerDevice = it
+                navController.navigate(
+                route = Routes.CHAT_SCREEN,
+               )
+                      },
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceAround
+            horizontalArrangement = Arrangement.Center
         ) {
-            Button(onClick = onStartScan) {
-                Text(text = "Start Scan")
-            }
-            Button(onClick = onStopScan) {
-                Text(text = "Stop Scan")
-            }
-            Button(onClick = onStartServer) {
-                Text(text = "Start server")
-            }
+            FabWithBottomSheet(onStartServer)
         }
+
     }
 }
 
 @Composable
 fun BluetoothDeviceList(
-    pairedDevices: List<BluetoothDevice>,
-    scannedDevices: List<BluetoothDevice>,
-    onClick: (BluetoothDevice) -> Unit,
+    onStartScan: () -> Unit,
+    onStopScan: () -> Unit,
+    pairedDevices: List<BluetoothDeviceDomain>,
+    scannedDevices: List<BluetoothDeviceDomain>,
+    onClick: (BluetoothDeviceDomain) -> Unit,
     modifier: Modifier = Modifier
 ) {
 
     LazyColumn(
         modifier = modifier
     ) {
+
+
+        item {
+            RowWithProgress(onStartScan,
+                onStopScan,
+                modifier = modifier)
+        }
+        
+        if(scannedDevices.isEmpty()){
+               item {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            Icons.Filled.Warning, contentDescription = "",
+                                    modifier = Modifier
+
+                                    .alpha(.6f),)
+                        Text(
+                            text = "Empty",
+                            modifier = Modifier
+                               // .padding(16.dp)
+                                .alpha(.6f),
+
+                        )
+
+                    }
+
+               }
+        }else {
+            items(scannedDevices) { device ->
+                Text(
+                    text = device.name ?: "(no name)",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onClick(device) }
+                        .padding(16.dp)
+                )
+
+            }
+        }
+
         item {
             Text(
                 text = "Paired Devices",
@@ -78,26 +145,9 @@ fun BluetoothDeviceList(
         }
         items(pairedDevices) { device ->
             Text(
-                text = device.name ?: "(no name)",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onClick(device) }
-                    .padding(16.dp)
-            )
 
-        }
-
-        item {
-            Text(
-                text = "Nearby Devices",
-                fontWeight = FontWeight.Bold,
-                fontSize = 24.sp,
-                modifier = Modifier.padding(16.dp)
-            )
-        }
-        items(scannedDevices) { device ->
-            Text(
                 text = device.name ?: "(no name)",
+
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onClick(device) }
