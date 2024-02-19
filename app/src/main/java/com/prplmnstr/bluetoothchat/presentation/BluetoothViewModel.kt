@@ -34,14 +34,29 @@ import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * ViewModel responsible for managing Bluetooth connectivity and data exchange.
+ *
+ * This ViewModel communicates with the [BluetoothController] to establish connections,
+ * send and receive messages, and handle Bluetooth-related events.
+ * It also utilizes an [AndroidAudioPlayer] and [AndroidAudioRecorder] for audio playback and recording.
+ *
+ * @property bluetoothController The [BluetoothController] responsible for handling Bluetooth operations.
+ * @property audioPlayer The [AndroidAudioPlayer] for audio playback.
+ * @property audioRecorder The [AndroidAudioRecorder] for audio recording.
+ * @property cacheDir The cache directory for storing audio files.
+ * @property audioFile The audio file being recorded or played.
+ */
+
+
 @HiltViewModel
 class BluetoothViewModel @Inject constructor(
     @Singleton
     private val bluetoothController: BluetoothController,
-    private val audioPlayer: AndroidAudioPlayer ,
+    private val audioPlayer: AndroidAudioPlayer,
     private val audioRecorder: AndroidAudioRecorder,
     private val cacheDir: File
-) :ViewModel() {
+) : ViewModel() {
 
 
     private var audioFile: File? = null
@@ -53,25 +68,28 @@ class BluetoothViewModel @Inject constructor(
         bluetoothController.pairedDevices,
         _state
     ) { scannedDevices, pairedDevices, state ->
-
+        Log.e("TAG", "scanning: running")
         state.copy(
             scannedDevices = scannedDevices,
             pairedDevices = pairedDevices,
-            messages = if(state.isConnected) state.messages else emptyList()
+            messages = if (state.isConnected) state.messages else emptyList()
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), _state.value)
 
     private var deviceConnectionJob: Job? = null
 
     init {
+        Log.e("TAG", "model: running")
         bluetoothController.isConnected.onEach { isConnected ->
             _state.update { it.copy(isConnected = isConnected) }
         }.launchIn(viewModelScope)
 
         bluetoothController.errors.onEach { error ->
-            _state.update { it.copy(
-                errorMessage = error
-            ) }
+            _state.update {
+                it.copy(
+                    errorMessage = error
+                )
+            }
         }.launchIn(viewModelScope)
     }
 
@@ -85,11 +103,13 @@ class BluetoothViewModel @Inject constructor(
     fun disconnectFromDevice() {
         deviceConnectionJob?.cancel()
         bluetoothController.closeConnection()
-        _state.update { it.copy(
-            messages = emptyList(),
-            isConnecting = false,
-            isConnected = false
-        ) }
+        _state.update {
+            it.copy(
+                messages = emptyList(),
+                isConnecting = false,
+                isConnected = false
+            )
+        }
     }
 
     fun waitForIncomingConnections() {
@@ -105,10 +125,12 @@ class BluetoothViewModel @Inject constructor(
 
         viewModelScope.launch {
             val bluetoothMessage = bluetoothController.trySendMessage(message)
-            if(bluetoothMessage != null) {
-                _state.update { it.copy(
-                    messages = it.messages + bluetoothMessage
-                ) }
+            if (bluetoothMessage != null) {
+                _state.update {
+                    it.copy(
+                        messages = it.messages + bluetoothMessage
+                    )
+                }
             }
         }
     }
@@ -117,14 +139,15 @@ class BluetoothViewModel @Inject constructor(
 
         viewModelScope.launch {
             val bluetoothMessage = audioFile?.let { bluetoothController.trySendMessage(it) }
-            if(bluetoothMessage != null) {
-                _state.update { it.copy(
-                    messages = it.messages + bluetoothMessage
-                ) }
+            if (bluetoothMessage != null) {
+                _state.update {
+                    it.copy(
+                        messages = it.messages + bluetoothMessage
+                    )
+                }
             }
         }
     }
-
 
 
     fun startScan() {
@@ -136,37 +159,48 @@ class BluetoothViewModel @Inject constructor(
         Log.d("TAG", "stopScan  : stopped ")
         bluetoothController.stopDiscovery()
     }
+
     private fun Flow<ConnectionResult>.listen(): Job {
         return onEach { result ->
-            when(result) {
+            when (result) {
                 is ConnectionResult.ConnectionEstablished -> {
-                    _state.update { it.copy(
-                        isConnected = true,
-                        isConnecting = false,
-                        errorMessage = null,
-                        peerDevice = result.peerDevice
-                    ) }
+                    _state.update {
+                        it.copy(
+                            isConnected = true,
+                            isConnecting = false,
+                            errorMessage = null,
+                            peerDevice = result.peerDevice
+                        )
+                    }
                 }
+
                 is ConnectionResult.TransferSucceeded -> {
-                    _state.update { it.copy(
-                        messages = it.messages + result.message
-                    ) }
+                    _state.update {
+                        it.copy(
+                            messages = it.messages + result.message
+                        )
+                    }
                 }
+
                 is ConnectionResult.Error -> {
-                    _state.update { it.copy(
-                        isConnected = false,
-                        isConnecting = false,
-                        errorMessage = result.message
-                    ) }
+                    _state.update {
+                        it.copy(
+                            isConnected = false,
+                            isConnecting = false,
+                            errorMessage = result.message
+                        )
+                    }
                 }
             }
         }
             .catch { throwable ->
                 bluetoothController.closeConnection()
-                _state.update { it.copy(
-                    isConnected = false,
-                    isConnecting = false,
-                ) }
+                _state.update {
+                    it.copy(
+                        isConnected = false,
+                        isConnecting = false,
+                    )
+                }
             }
             .launchIn(viewModelScope)
     }
@@ -174,42 +208,40 @@ class BluetoothViewModel @Inject constructor(
     fun releaseResources() = bluetoothController.release()
 
 
-
     //audio
 
-    suspend fun startRecord(){
+    suspend fun startRecord() {
         audioFile?.let { audioRecorder.start(it) }
     }
 
-    suspend fun stopRecord(){
+    suspend fun stopRecord() {
         audioRecorder.stop()
 
     }
 
-    fun startPlay(){
+    fun startPlay() {
         audioFile?.let { audioPlayer.playFile(it) }
     }
 
-    fun stopPlay(){
+    fun stopPlay() {
         audioPlayer.stop()
     }
 
-    fun seekTo(postion: Int){
+    fun seekTo(postion: Int) {
         audioPlayer.seekTo(postion)
     }
 
-    fun createAudioFile(name:String){
+    fun createAudioFile(name: String) {
         File(cacheDir, name).also {
-            audioFile =  it
+            audioFile = it
             Log.e("TAG", "createAudioFile  : file created ")
         }
     }
 
 
-
     override fun onCleared() {
         super.onCleared()
-     //   bluetoothController.release()
+        //   bluetoothController.release()
         Log.e("TAG", "Viewmodel  : cleared ")
     }
 }

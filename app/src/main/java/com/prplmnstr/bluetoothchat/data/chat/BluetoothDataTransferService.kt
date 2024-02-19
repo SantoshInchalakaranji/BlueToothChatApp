@@ -1,6 +1,7 @@
 package com.prplmnstr.bluetoothchat.data.chat
 
 import android.bluetooth.BluetoothSocket
+import android.util.Log
 import com.prplmnstr.bluetoothchat.domain.chat.BluetoothMessage
 import com.prplmnstr.bluetoothchat.domain.chat.TransferFailedException
 import kotlinx.coroutines.Dispatchers
@@ -15,14 +16,15 @@ class BluetoothDataTransferService(
 ) {
     fun listenForIncomingMessages(): Flow<BluetoothMessage> {
         return flow {
-            if(!socket.isConnected) {
+            if (!socket.isConnected) {
                 return@flow
             }
             val buffer = ByteArray(1024)
-            while(true) {
+            while (true) {
                 val byteCount = try {
                     socket.inputStream.read(buffer)
-                } catch(e: IOException) {
+                } catch (e: IOException) {
+                    Log.d("TAG", "transefer failed Error: $e+++++ ${e.cause}")
                     throw TransferFailedException()
                 }
 
@@ -41,7 +43,9 @@ class BluetoothDataTransferService(
         return withContext(Dispatchers.IO) {
             try {
                 socket.outputStream.write(bytes)
-            } catch(e: IOException) {
+            } catch (e: IOException) {
+                Log.e("TAG", "sendMessage Error: ${e.message}++///+++ ${e.cause}")
+
                 e.printStackTrace()
                 return@withContext false
             }

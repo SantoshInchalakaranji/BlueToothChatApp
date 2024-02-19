@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.location.LocationRequest
 import android.os.Build
@@ -60,6 +61,7 @@ class MainActivity : ComponentActivity() {
         bluetoothManager?.adapter
     }
 
+    // Check if Bluetooth is enabled
     private val isBluetoothEnabled: Boolean
         get() = bluetoothAdapter?.isEnabled == true
 
@@ -68,34 +70,35 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        Log.e("TAG", "main: running")
 
-
+        // Activity Result Launcher for enabling Bluetooth
         val enableBluetoothLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
         ) { /* Not needed */ }
 
 
+        // Activity Result Launcher for requesting permissions
         val permissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
         ) { perms ->
-            val canEnableBluetooth = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Check if Bluetooth permissions are granted
+            val canEnableBluetooth = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 perms[Manifest.permission.BLUETOOTH_CONNECT] == true
             } else true
 
 
-            Log.e("TAG", "bluetooth: $canEnableBluetooth", )
-            if(canEnableBluetooth && !isBluetoothEnabled)  {
-
+            // If Bluetooth permissions are granted and Bluetooth is not enabled, request to enable Bluetooth
+            if (canEnableBluetooth && !isBluetoothEnabled) {
                 enableBluetoothLauncher.launch(
                     Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
                 )
             }
 
-          
-
         }
 
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        // Launch permission request based on Android version
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             permissionLauncher.launch(
                 arrayOf(
                     Manifest.permission.BLUETOOTH_SCAN,
@@ -103,7 +106,7 @@ class MainActivity : ComponentActivity() {
                     Manifest.permission.RECORD_AUDIO
                 )
             )
-        }else{
+        } else {
 
             permissionLauncher.launch(
                 arrayOf(
@@ -116,59 +119,46 @@ class MainActivity : ComponentActivity() {
             )
         }
 
-
-//        val requestCode = 1;
-//        val discoverableIntent: Intent = Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE).apply {
-//            putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300)
-//        }
-//        startActivityForResult(discoverableIntent, requestCode)
-
+        makeDeviceDiscoverable()
 
         setContent {
             BlueToothChatTheme {
 
-                CheckLocationPermission(enableBluetoothLauncher)
-
-
+                CheckAndRequestLocationPermission(enableBluetoothLauncher)
 
                 Surface(
                     color = MaterialTheme.colorScheme.background
                 ) {
 
-//                    when {
-//                        state.isConnecting -> {
-//                            Column(
-//                                modifier = Modifier.fillMaxSize(),
-//                                horizontalAlignment = Alignment.CenterHorizontally,
-//                                verticalArrangement = Arrangement.Center
-//                            ) {
-//                                CircularProgressIndicator()
-//                                Text(text = "Connecting...")
-//                            }
-//                        }
-//                        state.isConnected -> {
-//                            ChatScreen(
-//
-//                            )
-//                        }
-//
-//                        else -> {
-//                            DeviceScreen(
-//
-//                            )
-//                        }
-//                    }
-
-                    App(applicationContext
-                        )
+                    App(
+                       applicationContext
+                    )
 
                 }
             }
         }
     }
 
+    @SuppressLint("MissingPermission")
+    private fun makeDeviceDiscoverable() {
+        if (!hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) {
+            Toast.makeText(applicationContext, "Please Enable Bluetooth Permissions. ", Toast.LENGTH_SHORT)
+                .show()
+            return
+        }
+
+        // Launch the intent to make the device discoverable
+        val requestCode = 1;
+        val discoverableIntent: Intent = Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE).apply {
+            putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300)
+        }
+        startActivityForResult(discoverableIntent, requestCode)
+
+
+    }
+
     @Composable
-    private fun CheckLocationPermission(enableBluetoothLauncher: ActivityResultLauncher<Intent>) {
+    private fun CheckAndRequestLocationPermission(enableBluetoothLauncher: ActivityResultLauncher<Intent>) {
         var dialogOpen by remember { mutableStateOf(true) }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S && !isLocationEnabled(this)) {
             if (dialogOpen) {
@@ -185,15 +175,25 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-
+    /**
+     * Check if location is enabled.
+     *
+     * @param context The application context.
+     * @return True if location is enabled, false otherwise.
+     */
     fun isLocationEnabled(context: Context): Boolean {
-
         val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
                 || locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
     }
 
 
-  
+    private fun hasPermission(permission: String): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            return applicationContext.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+        } else {
+            return true
+        }
 
+    }
 }
