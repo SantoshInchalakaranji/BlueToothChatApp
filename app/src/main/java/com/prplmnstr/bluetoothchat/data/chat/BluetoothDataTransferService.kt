@@ -58,6 +58,8 @@ class BluetoothDataTransferService(
                         acc + byteArray
                     }
                     emit(
+
+
                         combinedByteArray.copyOf(combinedByteArray.size).toBluetoothAudioMessage(false)
                     )
                     bufferList.clear()
