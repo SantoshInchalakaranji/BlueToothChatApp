@@ -150,16 +150,26 @@ fun ChatScreen(
                             )
                         }
                         is BluetoothMessage.AudioMessage ->{
-                            if(!message.isFromLocalUser){
-                                Log.e("TAG", "ChatScreen:${message.senderName} ", )
-                                Log.e("TAG", "ChatScreen:${message.time} ", )
-                                Log.e("TAG", "ChatScreen:${message.date} ", )
-                                Log.e("TAG", "ChatScreen:${message.senderAddress} ", )
 
-                                Log.e("TAG", "ChatScreen:${message.audioData.contentToString()}-----${message.audioData.size} ", )
+                            if(!message.isFromLocalUser){
+
                                 createAudioFile("audio_msg")
                                 saveByteArrayToFile(message.audioData)
                                 setPlayer()
+
+                                AudioMessage(  message = message,
+                                    modifier = Modifier
+                                        .align(
+                                            if(!message.isFromLocalUser) Alignment.Start else Alignment.End
+                                        ),
+
+                                    startPlaying,
+                                    stopPlaying,
+                                    seekTo,
+                                    getAudioDuration,
+                                    getCurrentPosition
+
+                                )
                             }else{
                                 AudioMessage(  message = message,
                                     modifier = Modifier

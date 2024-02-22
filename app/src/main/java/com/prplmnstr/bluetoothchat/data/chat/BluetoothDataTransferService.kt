@@ -2,6 +2,8 @@ package com.prplmnstr.bluetoothchat.data.chat
 
 import android.bluetooth.BluetoothSocket
 import android.util.Log
+import com.prplmnstr.bluetoothchat.data.chat.Constants.Companion.AUDIO_MSG_MARK
+import com.prplmnstr.bluetoothchat.data.chat.Constants.Companion.TEXT_MSG_MARK
 import com.prplmnstr.bluetoothchat.domain.chat.BluetoothMessage
 import com.prplmnstr.bluetoothchat.domain.chat.TransferFailedException
 import kotlinx.coroutines.Dispatchers
@@ -11,6 +13,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import java.io.DataInputStream
 import java.io.IOException
+import java.nio.ByteBuffer
 
 class BluetoothDataTransferService(
     private val socket: BluetoothSocket
@@ -21,6 +24,7 @@ class BluetoothDataTransferService(
                 return@flow
             }
             Log.d("TAG", "listenForIncomingMessages ")
+            val bufferList = mutableListOf<ByteArray>()
             var buffer = ByteArray(990)
             var msg = ""
             while (true) {
@@ -30,35 +34,45 @@ class BluetoothDataTransferService(
                     Log.d("TAG", "transefer failed Error: $e+++++ ${e.cause}")
                     throw TransferFailedException()
                 }
-                Log.e("TAG", "listenForIncomingMessages +++++byteCount=$byteCount" +
-                        "---")
+                bufferList.add(buffer.copyOfRange(0,byteCount))
+                val lastByte= buffer[byteCount-1]
 
-                msg +=  buffer.decodeToString(
-                    endIndex = byteCount
-                )
-                if(msg.endsWith("~`")){
+                //text message received
+                if(lastByte == TEXT_MSG_MARK){
+                    Log.d("TAG", "TEXT MESSAGE RECEIVED")
+                    val combinedByteArray = bufferList.fold(ByteArray(0)) { acc, byteArray ->
+                        acc + byteArray
+                    }
+                    val message = combinedByteArray.dropLast(1).toByteArray().decodeToString()
+
                     emit(
-                        msg.dropLast(2).toBluetoothMessage(
+                        message.toBluetoothMessage(
                             isFromLocalUser = false
                         )
-                        //   buffer.copyOf(byteCount).toBluetoothAudioMessage(false)
+
                     )
-                    Log.e("TAG", "listenForIncomingMessages +++++msg=$msg")
-                    msg=""
+                    bufferList.clear()
+                }else if(lastByte == AUDIO_MSG_MARK){
+                    Log.d("TAG", "AUDIO MESSAGE RECEIVED")
+                    val combinedByteArray = bufferList.fold(ByteArray(0)) { acc, byteArray ->
+                        acc + byteArray
+                    }
+                    emit(
+                        combinedByteArray.copyOf(combinedByteArray.size).toBluetoothAudioMessage(false)
+                    )
+                    bufferList.clear()
                 }
-
-
             }
         }.flowOn(Dispatchers.IO)
     }
     suspend fun sendMessage(bytes: ByteArray): Boolean {
-        Log.e("TAG", "sendMessage:bytecount: ${bytes.size}")
+
         return withContext(Dispatchers.IO) {
             try {
                 socket.outputStream.write(bytes)
+                Log.e("TAG", "sendMessage:bytecount: ${bytes}--${bytes}")
             } catch (e: IOException) {
                 Log.e("TAG", "sendMessage Error: ${e.message}++///+++ ${e.cause}")
-
                 e.printStackTrace()
                 return@withContext false
             }
@@ -67,3 +81,6 @@ class BluetoothDataTransferService(
         }
     }
 }
+
+
+

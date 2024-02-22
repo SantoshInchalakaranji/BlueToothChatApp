@@ -290,7 +290,7 @@ class AndroidBluetoothController(
             isFromLocalUser = true
         )
 
-        dataTransferService?.sendMessage(bluetoothMessage.toByteArray())
+        dataTransferService?.sendMessage(bluetoothMessage.toByteArray().appendTextMarker())
         bluetoothMessage.senderAddress = _connectedDevice.value.address
 
         return bluetoothMessage
@@ -308,7 +308,7 @@ class AndroidBluetoothController(
         if (dataTransferService == null) {
             return null
         }
-        Log.e("TAG", "ChatScreen:${audioData.readBytes()} ", )
+
         val bluetoothMessage = BluetoothMessage.AudioMessage(
             audioData = audioData.readBytes(),
             senderName = bluetoothAdapter?.name ?: "Unknown name",
@@ -318,12 +318,11 @@ class AndroidBluetoothController(
             isFromLocalUser = true
         )
 
-        dataTransferService?.sendMessage(bluetoothMessage.toByteArray())
+        dataTransferService?.sendMessage(bluetoothMessage.toByteArray().appendAudioMarker())
 
         Log.e("TAG", "dataTransferService  : came")
-        bluetoothMessage.senderAddress = _connectedDevice.value.address
-        val msg = bluetoothMessage.toByteArray()
-        return msg.toBluetoothAudioMessage(true)
+
+        return bluetoothMessage
     }
 
     override fun closeConnection() {
@@ -377,4 +376,13 @@ class AndroidBluetoothController(
     companion object {
         const val SERVICE_UUID = "27b7d1da-08c7-4505-a6d1-2459987e5e2d"
     }
+}
+
+// Function to append the marker byte to a byte array
+fun ByteArray.appendTextMarker(): ByteArray {
+    return this + byteArrayOf(Constants.TEXT_MSG_MARK)
+}
+// Function to append the marker byte to a byte array
+fun ByteArray.appendAudioMarker(): ByteArray {
+    return this + byteArrayOf(Constants.AUDIO_MSG_MARK)
 }

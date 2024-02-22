@@ -21,11 +21,11 @@ fun String.toBluetoothMessage(isFromLocalUser: Boolean): BluetoothMessage {
 }
 
 fun BluetoothMessage.TextMessage.toByteArray(): ByteArray {
-    return "$senderName#@$senderAddress#@$date#@$time#@$text~`".encodeToByteArray()
+    return "$senderName#@$senderAddress#@$date#@$time#@$text".encodeToByteArray()
 }
 
 
-fun ByteArray.toBluetoothAudioMessage(isFromLocalUser: Boolean): BluetoothMessage.AudioMessage {
+fun ByteArray.toBluetoothAudioMessage(isFromLocalUser: Boolean): BluetoothMessage {
     val inputStream = ByteArrayInputStream(this)
     val dataInputStream = DataInputStream(inputStream)
 
@@ -43,7 +43,7 @@ fun ByteArray.toBluetoothAudioMessage(isFromLocalUser: Boolean): BluetoothMessag
     val audioBytes = ByteArray(audioLength)
 
     dataInputStream.read(audioBytes)
-    Log.e("TAG", "toBluetoothAudioMessage: ${audioBytes.contentToString()}-----${audioBytes.size}")
+   // Log.e("TAG", "toBluetoothAudioMessage: ${audioBytes.contentToString()}-----${audioBytes.size}")
     dataInputStream.close()
 
     return BluetoothMessage.AudioMessage(
