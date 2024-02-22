@@ -1,5 +1,6 @@
 package com.prplmnstr.bluetoothchat.data.chat
 
+import android.util.Log
 import com.prplmnstr.bluetoothchat.domain.chat.BluetoothMessage
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -20,7 +21,7 @@ fun String.toBluetoothMessage(isFromLocalUser: Boolean): BluetoothMessage {
 }
 
 fun BluetoothMessage.TextMessage.toByteArray(): ByteArray {
-    return "$senderName#@$senderAddress#@$date#@$time#@$text".encodeToByteArray()
+    return "$senderName#@$senderAddress#@$date#@$time#@$text~`".encodeToByteArray()
 }
 
 
@@ -40,8 +41,9 @@ fun ByteArray.toBluetoothAudioMessage(isFromLocalUser: Boolean): BluetoothMessag
     val audioLength = dataInputStream.readInt()
     // Read audio data
     val audioBytes = ByteArray(audioLength)
-    dataInputStream.read(audioBytes)
 
+    dataInputStream.read(audioBytes)
+    Log.e("TAG", "toBluetoothAudioMessage: ${audioBytes.contentToString()}-----${audioBytes.size}")
     dataInputStream.close()
 
     return BluetoothMessage.AudioMessage(
@@ -72,6 +74,7 @@ fun BluetoothMessage.AudioMessage.toByteArray(): ByteArray {
     dataOutputStream.writeInt(audioData.size)
     // Write audio data
     dataOutputStream.write(audioData)
+    Log.e("TAG", "toByteArray: ${audioData.contentToString()}-----${audioData.size}")
 
     dataOutputStream.flush()
     dataOutputStream.close()

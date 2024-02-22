@@ -1,6 +1,8 @@
 package com.prplmnstr.bluetoothchat.presentation.components
 
+import android.util.Log
 import android.view.MotionEvent
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloat
@@ -35,6 +37,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.input.pointer.pointerInteropFilter
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -62,13 +65,17 @@ fun ChatScreen(
     sendAudioMessage:()->Unit,
     connectToDevice:(BluetoothDeviceDomain)->Unit,
     disconnectFromDevice:()->Unit,
-    startRecording: KSuspendFunction0<Unit>,
+    startRecording: ()->Unit,
 
-    stopRecording: KSuspendFunction0<Unit>,
+    stopRecording: ()->Unit,
     createAudioFile:(name:String)->Unit,
     startPlaying: ()->Unit,
     stopPlaying:()->Unit,
     seekTo:(position:Int)->Unit,
+    getAudioDuration:() ->Int,
+    getCurrentPosition:() ->Int,
+    saveByteArrayToFile:(ByteArray)->Unit,
+    setPlayer: ()->Unit,
 
     ) {
 
@@ -78,6 +85,7 @@ fun ChatScreen(
         mutableStateOf("")
     }
     val keyboardController = LocalSoftwareKeyboardController.current
+
 
     Column(
         modifier = Modifier
@@ -142,15 +150,32 @@ fun ChatScreen(
                             )
                         }
                         is BluetoothMessage.AudioMessage ->{
-                            AudioMessage(  message = message,
-                                modifier = Modifier
-                                    .align(
-                                        if(message.isFromLocalUser) Alignment.End else Alignment.Start
-                                    ),
+                            if(!message.isFromLocalUser){
+                                Log.e("TAG", "ChatScreen:${message.senderName} ", )
+                                Log.e("TAG", "ChatScreen:${message.time} ", )
+                                Log.e("TAG", "ChatScreen:${message.date} ", )
+                                Log.e("TAG", "ChatScreen:${message.senderAddress} ", )
 
-                                startPlaying,
-                                stopPlaying,
-                                seekTo)
+                                Log.e("TAG", "ChatScreen:${message.audioData.contentToString()}-----${message.audioData.size} ", )
+                                createAudioFile("audio_msg")
+                                saveByteArrayToFile(message.audioData)
+                                setPlayer()
+                            }else{
+                                AudioMessage(  message = message,
+                                    modifier = Modifier
+                                        .align(
+                                            if(message.isFromLocalUser) Alignment.End else Alignment.Start
+                                        ),
+
+                                    startPlaying,
+                                    stopPlaying,
+                                    seekTo,
+                                    getAudioDuration,
+                                    getCurrentPosition
+
+                                )
+                            }
+
                         }
                         is BluetoothMessage.ImageMessage ->{
 
@@ -225,8 +250,8 @@ fun ChatScreen(
 fun ButtonWithRecording(
     isRecording:Boolean, onRecordingChanged: (Boolean) -> Unit,
     sendAudioMessage: () -> Unit,
-    startRecording: KSuspendFunction0<Unit>,
-    stopRecording: KSuspendFunction0<Unit>,
+    startRecording:()->Unit,
+    stopRecording: ()->Unit,
     createAudioFile:(name:String)->Unit,
                         ) {
 
@@ -265,12 +290,9 @@ fun ButtonWithRecording(
 
                     event.action == MotionEvent.ACTION_UP -> {
                         onRecordingChanged(false)
-                        coroutineScope.launch(Dispatchers.IO) {
-                            stopRecording()
-                            sendAudioMessage()
-                        }
+                        stopRecording()
 
-
+                        sendAudioMessage()
 
                     }
                 }

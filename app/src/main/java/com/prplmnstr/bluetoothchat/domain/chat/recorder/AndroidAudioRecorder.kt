@@ -19,7 +19,7 @@ class AndroidAudioRecorder(
         } else MediaRecorder()
     }
 
-    override suspend fun start(outputFile: File) {
+    override  fun start(outputFile: File) {
         createRecorder().apply {
             setAudioSource(MediaRecorder.AudioSource.MIC)
             setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
@@ -34,7 +34,7 @@ class AndroidAudioRecorder(
         }
     }
 
-    override suspend fun stop() {
+    override  fun stop() {
         recorder?.stop()
         recorder?.reset()
         recorder = null

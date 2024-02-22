@@ -1,5 +1,6 @@
 package com.prplmnstr.bluetoothchat.presentation.components
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,6 +18,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,6 +33,7 @@ import com.prplmnstr.bluetoothchat.domain.chat.BluetoothMessage
 import com.prplmnstr.bluetoothchat.ui.theme.BlueViolet3
 import com.prplmnstr.bluetoothchat.ui.theme.LightRed
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.io.File
 
 
@@ -41,16 +44,25 @@ fun AudioMessage(
     startPlaying: () -> Unit,
     stopPlaying: () -> Unit,
     seekTo: (position: Int) -> Unit,
+    getAudioDuration:() ->Int,
+    getCurrentPosition:() ->Int,
 ) {
     var isPlaying by remember { mutableStateOf(false) }
     var progress by remember { mutableStateOf(0f) }
 
+    val duration = getAudioDuration().toFloat()
+    Log.e("TAG", "AudioMessage: duration = $duration ",)
 
-    LaunchedEffect(Unit) {
-    //    val duration = viewModel.getAudioDuration()
+
+    LaunchedEffect(isPlaying) {
+
         while (isPlaying) {
-            delay(100) // Update progress every 100 milliseconds
-           // progress = viewModel.getCurrentPosition() * 100f / duration
+            delay(500L)
+            progress = (progress + 500f ).coerceAtMost(duration)
+            if(progress==duration){
+                isPlaying=!isPlaying
+                progress = 0f
+            }
         }
     }
 
@@ -81,9 +93,10 @@ fun AudioMessage(
             IconButton(
                 onClick = {
                     if (isPlaying) {
-                       stopPlaying()
+                        stopPlaying()
                     } else {
-                       startPlaying()
+                        startPlaying()
+
                     }
                     isPlaying = !isPlaying
 
@@ -106,11 +119,14 @@ fun AudioMessage(
             // Slider for seeking
             Slider(
                 value = progress,
-                onValueChange = { progress = it
+                onValueChange = {
+                    progress = it
                     seekTo(it.toInt())
-                                },
-                valueRange = 0f..100f,
+
+                },
+                valueRange = 0f..duration,
                 onValueChangeFinished = {
+
                 },
                 modifier = Modifier.fillMaxWidth(0.5f)
             )
@@ -118,11 +134,11 @@ fun AudioMessage(
                 text = "11:00 AM",
                 fontSize = 10.sp,
                 color = Color.Black,
-
                 )
         }
 
     }
+
 }
 
 

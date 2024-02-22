@@ -57,6 +57,10 @@ fun App(
               startPlaying =   viewModel::startPlay,
                stopPlaying =  viewModel::stopPlay,
                 seekTo = viewModel::seekTo,
+                getAudioDuration = viewModel::getAudioDuration,
+                getCurrentPosition = viewModel::getCurrentPosition,
+                saveByteArrayToFile = viewModel::saveByteArrayToFile,
+                setPlayer = viewModel::setPlayer
             )
         }
         composable(Routes.DEVICE_SCREEN){

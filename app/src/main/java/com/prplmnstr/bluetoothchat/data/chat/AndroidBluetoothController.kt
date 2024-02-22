@@ -258,7 +258,7 @@ class AndroidBluetoothController(
                         )
                     }
                 } catch (e: IOException) {
-                    Log.d("TAG", "connectToDevice: ${e.message}+++++ ${e.cause}")
+                    Log.e("TAG", "connectToDevice: ${e.message}+++++ ${e.cause}")
                     socket.close()
                     currentClientSocket = null
                     emit(ConnectionResult.Error("Connection was interrupted"))
@@ -308,7 +308,7 @@ class AndroidBluetoothController(
         if (dataTransferService == null) {
             return null
         }
-
+        Log.e("TAG", "ChatScreen:${audioData.readBytes()} ", )
         val bluetoothMessage = BluetoothMessage.AudioMessage(
             audioData = audioData.readBytes(),
             senderName = bluetoothAdapter?.name ?: "Unknown name",
@@ -318,11 +318,12 @@ class AndroidBluetoothController(
             isFromLocalUser = true
         )
 
-        //  dataTransferService?.sendMessage(bluetoothMessage.toByteArray())
+        dataTransferService?.sendMessage(bluetoothMessage.toByteArray())
 
         Log.e("TAG", "dataTransferService  : came")
         bluetoothMessage.senderAddress = _connectedDevice.value.address
-        return bluetoothMessage
+        val msg = bluetoothMessage.toByteArray()
+        return msg.toBluetoothAudioMessage(true)
     }
 
     override fun closeConnection() {

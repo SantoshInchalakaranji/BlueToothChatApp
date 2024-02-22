@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
+import java.io.DataInputStream
 import java.io.IOException
 
 class BluetoothDataTransferService(
@@ -19,7 +20,9 @@ class BluetoothDataTransferService(
             if (!socket.isConnected) {
                 return@flow
             }
-            val buffer = ByteArray(1024)
+            Log.d("TAG", "listenForIncomingMessages ")
+            var buffer = ByteArray(990)
+            var msg = ""
             while (true) {
                 val byteCount = try {
                     socket.inputStream.read(buffer)
@@ -27,19 +30,29 @@ class BluetoothDataTransferService(
                     Log.d("TAG", "transefer failed Error: $e+++++ ${e.cause}")
                     throw TransferFailedException()
                 }
+                Log.e("TAG", "listenForIncomingMessages +++++byteCount=$byteCount" +
+                        "---")
 
-                emit(
-                    buffer.decodeToString(
-                        endIndex = byteCount
-                    ).toBluetoothMessage(
-                        isFromLocalUser = false
-                    )
+                msg +=  buffer.decodeToString(
+                    endIndex = byteCount
                 )
+                if(msg.endsWith("~`")){
+                    emit(
+                        msg.dropLast(2).toBluetoothMessage(
+                            isFromLocalUser = false
+                        )
+                        //   buffer.copyOf(byteCount).toBluetoothAudioMessage(false)
+                    )
+                    Log.e("TAG", "listenForIncomingMessages +++++msg=$msg")
+                    msg=""
+                }
+
+
             }
         }.flowOn(Dispatchers.IO)
     }
-
     suspend fun sendMessage(bytes: ByteArray): Boolean {
+        Log.e("TAG", "sendMessage:bytecount: ${bytes.size}")
         return withContext(Dispatchers.IO) {
             try {
                 socket.outputStream.write(bytes)

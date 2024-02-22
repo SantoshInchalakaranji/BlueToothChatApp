@@ -4,6 +4,6 @@ import java.io.File
 
 interface AudioRecord {
 
-   suspend fun start(outputFile: File)
-   suspend fun stop()
+ fun start(outputFile: File)
+  fun stop()
 }

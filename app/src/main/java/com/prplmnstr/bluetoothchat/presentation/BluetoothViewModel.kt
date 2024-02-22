@@ -31,6 +31,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -210,17 +212,21 @@ class BluetoothViewModel @Inject constructor(
 
     //audio
 
-    suspend fun startRecord() {
+     fun startRecord() {
         audioFile?.let { audioRecorder.start(it) }
     }
 
-    suspend fun stopRecord() {
+     fun stopRecord() {
         audioRecorder.stop()
-
+         setPlayer()
+    }
+    fun setPlayer(){
+        audioFile?.let { audioPlayer.playFile(it) }
     }
 
+
     fun startPlay() {
-        audioFile?.let { audioPlayer.playFile(it) }
+       audioPlayer.start()
     }
 
     fun stopPlay() {
@@ -230,11 +236,28 @@ class BluetoothViewModel @Inject constructor(
     fun seekTo(postion: Int) {
         audioPlayer.seekTo(postion)
     }
+    fun getAudioDuration():Int {
+        return audioPlayer.getAudioDuration()
+    }
+    fun getCurrentPosition():Int {
+        return audioPlayer.getCurrentPosition()
+    }
 
     fun createAudioFile(name: String) {
         File(cacheDir, name).also {
             audioFile = it
             Log.e("TAG", "createAudioFile  : file created ")
+        }
+    }
+
+    fun saveByteArrayToFile(audioData: ByteArray){
+        try {
+            val outputStream = FileOutputStream(audioFile)
+            outputStream.write(audioData)
+            outputStream.close()
+            println("Audio data saved successfully to file: ${audioFile?.absolutePath}")
+        } catch (e: IOException) {
+            println("Error saving audio data to file: ${e.message}")
         }
     }
 

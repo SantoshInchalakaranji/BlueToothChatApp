@@ -15,24 +15,35 @@ class AndroidAudioPlayer(
     override fun playFile(file: File) {
         MediaPlayer.create(context, file.toUri()).apply {
             player = this
-            start()
         }
+      //  player?.prepare()
+    }
+
+    override fun start() {
+        player?.start()
     }
 
     override fun stop() {
-        player?.stop()
-        player?.release()
-        player = null
+        player?.pause()
+       // player?.release()
+       // player = null
     }
 
     override fun seekTo(position: Int) {
-        val duration = player?.duration?.toFloat()
-        val seekPosition = (duration!! * position / 100f).toInt()
+
         try{
-            player?.seekTo(seekPosition)
+            player?.seekTo(position)
         }catch (e:Exception){
             Log.e("TAG", "seekTo: ${e.toString()}", )
         }
 
+    }
+
+    override fun getAudioDuration(): Int {
+        return player?.duration!!
+    }
+
+    override fun getCurrentPosition(): Int {
+        return player?.currentPosition!!
     }
 }
