@@ -1,10 +1,11 @@
 package com.prplmnstr.bluetoothchat.presentation.components
 
+import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -14,6 +15,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -23,11 +26,15 @@ import com.prplmnstr.bluetoothchat.ui.theme.BlueViolet3
 import com.prplmnstr.bluetoothchat.ui.theme.LightRed
 
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ChatMessage(
     message: BluetoothMessage.TextMessage,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    deleteMessage:(message:BluetoothMessage) -> Unit,
+
 ) {
+    val context = LocalContext.current
     Column(
         modifier = modifier
             .clip(
@@ -42,6 +49,16 @@ fun ChatMessage(
                 if (message.isFromLocalUser) BlueViolet3 else LightRed
             )
             .padding(16.dp)
+            .combinedClickable(
+                onClick = {},
+                onDoubleClick = {},
+                onLongClick = {
+                    deleteMessage(message)
+                    Toast
+                        .makeText(context, "Message Deleted", Toast.LENGTH_SHORT)
+                        .show()
+                }
+            )
     ) {
 
         Text(
@@ -70,7 +87,10 @@ fun ChatMessagePreview() {
                     date = "11, Jan",
                     time = "11:00 AM",
                     isFromLocalUser = false
-                )
+                ),
+                deleteMessage = {},
+
+
             )
         }
 

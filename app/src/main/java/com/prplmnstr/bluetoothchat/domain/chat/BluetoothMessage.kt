@@ -1,5 +1,8 @@
 package com.prplmnstr.bluetoothchat.domain.chat
 
+import com.prplmnstr.bluetoothchat.data.chat.models.MessageEntity
+import com.prplmnstr.bluetoothchat.data.chat.models.MessageType
+import io.realm.kotlin.types.RealmObject
 
 
 sealed class BluetoothMessage {
@@ -17,7 +20,7 @@ sealed class BluetoothMessage {
         val date: String,
         val time: String,
         val senderName: String,
-        val senderAddress: String,
+        var senderAddress: String,
         val isFromLocalUser: Boolean
     ) : BluetoothMessage()
 
@@ -30,3 +33,47 @@ sealed class BluetoothMessage {
         val isFromLocalUser: Boolean
     ) : BluetoothMessage()
 }
+
+fun BluetoothMessage.toMessageEntity(path:String): MessageEntity {
+
+    return when (this) {
+
+        is BluetoothMessage.TextMessage -> {
+            val msg = this
+            MessageEntity().apply {
+                type = MessageType.TEXT.value
+                data = text
+                date = msg.date
+                time = msg.time
+                senderName = msg.senderName
+                senderAddress = msg.senderAddress
+                isFromLocalUser = msg.isFromLocalUser
+            }
+        }
+        is BluetoothMessage.AudioMessage -> {
+            val msg = this
+            MessageEntity().apply {
+                type = MessageType.AUDIO.value
+                data = path
+                date = msg.date
+                time = msg.time
+                senderName = msg.senderName
+                senderAddress = msg.senderAddress
+                isFromLocalUser = msg.isFromLocalUser
+            }
+        }
+        is BluetoothMessage.ImageMessage -> {
+            val msg = this
+            MessageEntity().apply {
+                type = MessageType.IMAGE.value
+                data = path
+                date = msg.date
+                time = msg.time
+                senderName = msg.senderName
+                senderAddress = msg.senderAddress
+                isFromLocalUser = msg.isFromLocalUser
+            }
+        }
+    }
+}
+

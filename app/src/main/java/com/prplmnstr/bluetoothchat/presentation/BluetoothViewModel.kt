@@ -6,20 +6,28 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.prplmnstr.bluetoothchat.data.chat.models.MessageEntity
+import com.prplmnstr.bluetoothchat.data.chat.models.toBluetoothMessage
+import com.prplmnstr.bluetoothchat.data.chat.realm.RealmDaoImpl
+import com.prplmnstr.bluetoothchat.data.chat.storage.ExternalStorage
 import com.prplmnstr.bluetoothchat.domain.chat.BluetoothController
 import com.prplmnstr.bluetoothchat.domain.chat.BluetoothDeviceDomain
+import com.prplmnstr.bluetoothchat.domain.chat.BluetoothMessage
 import com.prplmnstr.bluetoothchat.domain.chat.ConnectionResult
 import com.prplmnstr.bluetoothchat.domain.chat.playback.AndroidAudioPlayer
 import com.prplmnstr.bluetoothchat.domain.chat.recorder.AndroidAudioRecorder
+import com.prplmnstr.bluetoothchat.domain.chat.toMessageEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ActivityScoped
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,11 +37,13 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -58,24 +68,29 @@ class BluetoothViewModel @Inject constructor(
     private val bluetoothController: BluetoothController,
     private val audioPlayer: AndroidAudioPlayer,
     private val audioRecorder: AndroidAudioRecorder,
-    private val cacheDir: File
+    private val cacheDir: File,
+    private val realmDaoImpl: RealmDaoImpl,
+    private val externalStorage: ExternalStorage
 ) : ViewModel() {
 
 
     private var audioFile: File? = null
+    private var messageEntityList = mutableListOf<MessageEntity>()
 
-    @Singleton
+
     private val _state = MutableStateFlow(BluetoothUiState())
     val state = combine(
         bluetoothController.scannedDevices,
         bluetoothController.pairedDevices,
         _state
-    ) { scannedDevices, pairedDevices, state ->
+    ) {
+            scannedDevices, pairedDevices, state ->
         Log.e("TAG", "scanning: running")
         state.copy(
             scannedDevices = scannedDevices,
             pairedDevices = pairedDevices,
-            messages = if (state.isConnected) state.messages else emptyList()
+
+           // messages = if (state.isConnected) state.messages else emptyList()
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), _state.value)
 
@@ -97,6 +112,7 @@ class BluetoothViewModel @Inject constructor(
     }
 
     fun connectToDevice(device: BluetoothDeviceDomain) {
+
         _state.update { it.copy(isConnecting = true, peerDevice = device) }
         deviceConnectionJob = bluetoothController
             .connectToDevice(device)
@@ -134,6 +150,7 @@ class BluetoothViewModel @Inject constructor(
                         messages = it.messages + bluetoothMessage
                     )
                 }
+                insertMessage(bluetoothMessage.toMessageEntity(""))
             }
         }
     }
@@ -148,9 +165,41 @@ class BluetoothViewModel @Inject constructor(
                         messages = it.messages + bluetoothMessage
                     )
                 }
+              val path =
+                when(bluetoothMessage){
+                    is BluetoothMessage.AudioMessage -> { externalStorage.saveAudioFile(UUID.randomUUID().toString(),bluetoothMessage)}
+                    is BluetoothMessage.ImageMessage -> {""}
+                    is BluetoothMessage.TextMessage -> {""}
+                }
+                Log.e("TAG", "saveAudioFile: $path saved", )
+                insertMessage(bluetoothMessage.toMessageEntity(path))
             }
         }
     }
+
+    fun sendMessage(imageData: ByteArray) {
+
+        viewModelScope.launch {
+            val bluetoothMessage =  bluetoothController.trySendMessage(imageData)
+            if (bluetoothMessage != null) {
+                _state.update {
+                    it.copy(
+                        messages = it.messages + bluetoothMessage
+                    )
+                }
+                val path =
+                    when(bluetoothMessage){
+                        is BluetoothMessage.AudioMessage -> {""}
+                        is BluetoothMessage.ImageMessage -> { externalStorage.saveImageFile(UUID.randomUUID().toString(),bluetoothMessage)}
+                        is BluetoothMessage.TextMessage -> {""}
+                    }
+                Log.e("IMAGE", "saveImageFile: $path saved", )
+                insertMessage(bluetoothMessage.toMessageEntity(path))
+            }
+        }
+    }
+
+
 
 
     fun startScan() {
@@ -169,12 +218,14 @@ class BluetoothViewModel @Inject constructor(
                 is ConnectionResult.ConnectionEstablished -> {
                     _state.update {
                         it.copy(
+                            peerDevice = result.peerDevice,
                             isConnected = true,
                             isConnecting = false,
-                            errorMessage = null,
-                            peerDevice = result.peerDevice
+                            errorMessage = null
+
                         )
                     }
+                    loadOldMessages(result.peerDevice)
                 }
 
                 is ConnectionResult.TransferSucceeded -> {
@@ -183,6 +234,22 @@ class BluetoothViewModel @Inject constructor(
                             messages = it.messages + result.message
                         )
                     }
+                    when(result.message){
+                        is BluetoothMessage.AudioMessage -> {
+                            val path = externalStorage.saveAudioFile(UUID.randomUUID().toString(),result.message)
+                            Log.e("TAAG", "listen: $path", )
+                            if(path.isNotEmpty())
+                            insertMessage(result.message.toMessageEntity(path))
+                        }
+                        is BluetoothMessage.ImageMessage -> {
+                            val path = externalStorage.saveImageFile(UUID.randomUUID().toString(),result.message)
+                            if(path.isNotEmpty())
+                                insertMessage(result.message.toMessageEntity(path))
+                        }
+                        is BluetoothMessage.TextMessage -> insertMessage(result.message.toMessageEntity(""))
+                    }
+
+
                 }
 
                 is ConnectionResult.Error -> {
@@ -194,6 +261,8 @@ class BluetoothViewModel @Inject constructor(
                         )
                     }
                 }
+
+                else -> {}
             }
         }
             .catch { throwable ->
@@ -219,10 +288,10 @@ class BluetoothViewModel @Inject constructor(
 
      fun stopRecord() {
         audioRecorder.stop()
-         setPlayer()
+        // setPlayer()
     }
-    fun setPlayer(){
-        audioFile?.let { audioPlayer.playFile(it) }
+    fun setPlayer(file: File){
+        file.let { audioPlayer.playFile(it) }
     }
 
 
@@ -244,24 +313,62 @@ class BluetoothViewModel @Inject constructor(
         return audioPlayer.getCurrentPosition()
     }
 
-    fun createAudioFile(name: String) {
-        File(cacheDir, name).also {
-            audioFile = it
-            Log.e("TAG", "createAudioFile  : file created ")
-        }
+    fun createAudioFile(name: String) :File{
+       return File(cacheDir,name).also {
+           audioFile = it
+       }
     }
 
-    fun saveByteArrayToFile(audioData: ByteArray){
+    fun saveByteArrayToFile(audioData: ByteArray, file:File){
         try {
-            val outputStream = FileOutputStream(audioFile)
+            val outputStream = FileOutputStream(file)
             outputStream.write(audioData)
             outputStream.close()
-            println("Audio data saved successfully to file: ${audioFile?.absolutePath}")
+         Log.e("TAG","Audio data saved successfully to file: ${file?.absolutePath}")
         } catch (e: IOException) {
             println("Error saving audio data to file: ${e.message}")
         }
     }
 
+    //realm
+        fun insertMessage(messageEntity: MessageEntity){
+        Log.e("TAG", "insertMessage: ${messageEntity.date}--${messageEntity.senderAddress}--")
+        viewModelScope.launch(Dispatchers.IO) {
+            realmDaoImpl.insertMessage(messageEntity)
+        }
+
+        }
+
+    fun getOldMessages(senderAddress:String):Flow<List<MessageEntity>>{
+        return realmDaoImpl.getAllMessages(senderAddress)
+
+    }
+
+    fun loadOldMessages(device: BluetoothDeviceDomain){
+        var bluetoothMessages: List<BluetoothMessage>
+        viewModelScope.launch(Dispatchers.IO) {
+            getOldMessages(device.address).collect { messages ->
+                messageEntityList = messages.reversed().toMutableList()
+                 bluetoothMessages = messages.map { it.toBluetoothMessage(externalStorage)
+                  }
+                _state.update {
+                    it.copy(messages = bluetoothMessages.reversed(),
+                        peerDevice = device)
+                }
+            }
+
+        }
+
+    }
+
+    fun deleteMessage(message:BluetoothMessage){
+        val position = _state.value.messages.indexOf(message)
+        val messageEntity = messageEntityList.get(position)
+        viewModelScope.launch {
+            realmDaoImpl.deleteMessage(messageEntity)
+        }
+
+    }
 
     override fun onCleared() {
         super.onCleared()

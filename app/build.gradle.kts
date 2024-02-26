@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("kotlin-parcelize")
+    id ("io.realm.kotlin")
     kotlin("kapt")
     id("com.google.dagger.hilt.android")
 }
@@ -92,8 +93,15 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:$lifecycleVersion")
 
     val nav_version = "2.7.7"
-
     implementation("androidx.navigation:navigation-compose:$nav_version")
+
+    //coil
+    implementation("io.coil-kt:coil-compose:2.5.0")
+
+    //realm
+    implementation ("io.realm.kotlin:library-base:1.11.0")
+    implementation ("io.realm.kotlin:library-sync:1.11.0")
+    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0") 
 }
 kapt {
     correctErrorTypes = true

@@ -25,11 +25,11 @@ class AndroidAudioRecorder(
             setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
             setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
             setOutputFile(FileOutputStream(outputFile).fd)
-
+            recorder = this
             prepare()
             start()
 
-            recorder = this
+
             Log.e("TAG", "createRecorded  : sound recorded")
         }
     }

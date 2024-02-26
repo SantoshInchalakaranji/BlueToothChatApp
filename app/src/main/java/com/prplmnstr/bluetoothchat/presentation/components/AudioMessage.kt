@@ -1,6 +1,7 @@
 package com.prplmnstr.bluetoothchat.presentation.components
 
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,12 +48,20 @@ fun AudioMessage(
     seekTo: (position: Int) -> Unit,
     getAudioDuration:() ->Int,
     getCurrentPosition:() ->Int,
+    createAudioFile:(name:String)->File,
+    saveByteArrayToFile:(ByteArray,File)->Unit,
+    setPlayer: (File)->Unit,
 ) {
     var isPlaying by remember { mutableStateOf(false) }
     var progress by remember { mutableStateOf(0f) }
+    var duration by remember { mutableStateOf(10f) }
+    var audioFile by rememberSaveable { mutableStateOf<File?>(null) }
 
-    val duration = getAudioDuration().toFloat()
-    Log.e("TAG", "AudioMessage: duration = $duration ",)
+
+    val context = LocalContext.current
+
+
+
 
 
     LaunchedEffect(isPlaying) {
@@ -94,11 +104,26 @@ fun AudioMessage(
                 onClick = {
                     if (isPlaying) {
                         stopPlaying()
+                        isPlaying = !isPlaying
+
                     } else {
-                        startPlaying()
+                       if(message.audioData.isEmpty()){
+                           Toast.makeText(context, "Audio data not found. File may be deleted from device.", Toast.LENGTH_SHORT).show()
+                       }else{
+                           if(audioFile==null){
+
+                               audioFile =  createAudioFile("temp")
+                               saveByteArrayToFile(message.audioData,audioFile!!)
+                               setPlayer(audioFile!!)
+                               duration = getAudioDuration().toFloat()
+                           }
+                           startPlaying()
+                           isPlaying = !isPlaying
+                       }
+
 
                     }
-                    isPlaying = !isPlaying
+
 
                 },
 
@@ -126,12 +151,11 @@ fun AudioMessage(
                 },
                 valueRange = 0f..duration,
                 onValueChangeFinished = {
-
                 },
                 modifier = Modifier.fillMaxWidth(0.5f)
             )
             Text(
-                text = "11:00 AM",
+                text = message.time,
                 fontSize = 10.sp,
                 color = Color.Black,
                 )

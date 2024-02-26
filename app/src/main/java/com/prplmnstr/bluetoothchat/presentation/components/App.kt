@@ -47,8 +47,9 @@ fun App(
         composable(Routes.CHAT_SCREEN
         ){
             ChatScreen(navController,state,
-                viewModel::sendMessage,
-                viewModel::sendMessage,
+              sendTextMessage =   viewModel::sendMessage,
+               sendAudioMessage =  viewModel::sendMessage,
+                sendImageMessage = viewModel::sendMessage,
                 viewModel::connectToDevice,
                 viewModel::disconnectFromDevice,
                startRecording =  viewModel::startRecord,
@@ -60,7 +61,9 @@ fun App(
                 getAudioDuration = viewModel::getAudioDuration,
                 getCurrentPosition = viewModel::getCurrentPosition,
                 saveByteArrayToFile = viewModel::saveByteArrayToFile,
-                setPlayer = viewModel::setPlayer
+                setPlayer = viewModel::setPlayer,
+                deleteMessage = viewModel::deleteMessage
+
             )
         }
         composable(Routes.DEVICE_SCREEN){
@@ -70,7 +73,7 @@ fun App(
                 viewModel::stopScan,
 
                 viewModel::waitForIncomingConnections,
-                viewModel::connectToDevice
+                loadOldMessages = viewModel::loadOldMessages
                 )
         }
         composable(Routes.SPLASH_SCREEN){

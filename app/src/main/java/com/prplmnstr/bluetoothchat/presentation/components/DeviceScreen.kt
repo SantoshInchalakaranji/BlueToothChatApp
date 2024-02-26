@@ -40,9 +40,10 @@ fun DeviceScreen(
         onStartScan: () -> Unit,
         onStopScan: () -> Unit,
         onStartServer: () -> Unit,
-        onDeviceClick: (BluetoothDevice) -> Unit
+        loadOldMessages:(device:BluetoothDevice) ->Unit
 ) {
     if(state.isConnected){
+
         navController.navigate(
             route = Routes.CHAT_SCREEN,
         )
@@ -60,6 +61,8 @@ fun DeviceScreen(
             pairedDevices = state.pairedDevices,
             scannedDevices = state.scannedDevices,
             onClick = {
+
+               loadOldMessages(it)
                 state.peerDevice = it
                 navController.navigate(
                 route = Routes.CHAT_SCREEN,

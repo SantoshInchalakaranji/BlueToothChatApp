@@ -21,6 +21,7 @@ interface BluetoothController {
 
     suspend fun trySendMessage(message: String): BluetoothMessage?
     suspend fun trySendMessage(audioData : File): BluetoothMessage?
+    suspend fun trySendMessage(imageData : ByteArray): BluetoothMessage?
 
     fun closeConnection()
     fun release()

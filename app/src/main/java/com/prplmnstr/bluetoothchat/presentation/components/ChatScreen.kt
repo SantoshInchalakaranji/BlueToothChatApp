@@ -1,18 +1,26 @@
 package com.prplmnstr.bluetoothchat.presentation.components
 
+import android.content.ContentResolver
+import android.content.Context
+import android.net.Uri
 import android.util.Log
 import android.view.MotionEvent
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Send
@@ -42,17 +50,21 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import coil.compose.rememberImagePainter
 import com.prplmnstr.bluetoothchat.R
 import com.prplmnstr.bluetoothchat.domain.chat.BluetoothDeviceDomain
 import com.prplmnstr.bluetoothchat.domain.chat.BluetoothMessage
+import com.prplmnstr.bluetoothchat.domain.chat.image.UriToByteArray
 import com.prplmnstr.bluetoothchat.presentation.BluetoothUiState
-import com.prplmnstr.bluetoothchat.presentation.BluetoothViewModel
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 import java.io.File
-import kotlin.reflect.KSuspendFunction0
+import java.io.IOException
+import kotlin.math.log
 
 
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalMaterial3Api::class)
@@ -63,29 +75,34 @@ fun ChatScreen(
     state:BluetoothUiState,
     sendTextMessage:(String)->Unit,
     sendAudioMessage:()->Unit,
+    sendImageMessage:(ByteArray)->Unit,
     connectToDevice:(BluetoothDeviceDomain)->Unit,
     disconnectFromDevice:()->Unit,
     startRecording: ()->Unit,
 
     stopRecording: ()->Unit,
-    createAudioFile:(name:String)->Unit,
+    createAudioFile:(name:String)->File,
     startPlaying: ()->Unit,
     stopPlaying:()->Unit,
     seekTo:(position:Int)->Unit,
     getAudioDuration:() ->Int,
     getCurrentPosition:() ->Int,
-    saveByteArrayToFile:(ByteArray)->Unit,
-    setPlayer: ()->Unit,
+    saveByteArrayToFile:(ByteArray,File)->Unit,
+    setPlayer: (File)->Unit,
+    deleteMessage:(message:BluetoothMessage) -> Unit
 
     ) {
 
-    var isRecording by remember { mutableStateOf(false) }
 
+
+    var isRecording by remember { mutableStateOf(false) }
     val message = rememberSaveable {
         mutableStateOf("")
     }
     val keyboardController = LocalSoftwareKeyboardController.current
 
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -98,10 +115,12 @@ fun ChatScreen(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+
             Text(
                 text = state.peerDevice?.name?:"No Name",
                 modifier = Modifier.weight(1f)
             )
+
             if(state.isConnecting){
                 CircularProgressIndicator(
                     modifier = Modifier.size(24.dp),
@@ -132,7 +151,8 @@ fun ChatScreen(
                 .fillMaxWidth()
                 .weight(1f),
             contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            reverseLayout = true
         ) {
             items(state.messages) { message ->
                 Column(
@@ -146,17 +166,12 @@ fun ChatScreen(
                                 modifier = Modifier
                                     .align(
                                         if(message.isFromLocalUser) Alignment.End else Alignment.Start
-                                    )
+                                    ),
+                                deleteMessage = deleteMessage,
+
                             )
                         }
                         is BluetoothMessage.AudioMessage ->{
-
-                            if(!message.isFromLocalUser){
-
-                                createAudioFile("audio_msg")
-                                saveByteArrayToFile(message.audioData)
-                                setPlayer()
-
                                 AudioMessage(  message = message,
                                     modifier = Modifier
                                         .align(
@@ -167,34 +182,27 @@ fun ChatScreen(
                                     stopPlaying,
                                     seekTo,
                                     getAudioDuration,
-                                    getCurrentPosition
-
+                                    getCurrentPosition,
+                                    createAudioFile,
+                                    saveByteArrayToFile,
+                                     setPlayer
                                 )
-                            }else{
-                                AudioMessage(  message = message,
-                                    modifier = Modifier
-                                        .align(
-                                            if(message.isFromLocalUser) Alignment.End else Alignment.Start
-                                        ),
-
-                                    startPlaying,
-                                    stopPlaying,
-                                    seekTo,
-                                    getAudioDuration,
-                                    getCurrentPosition
-
-                                )
-                            }
-
                         }
                         is BluetoothMessage.ImageMessage ->{
-
+                            ImageMessage(
+                                message =message,
+                                modifier = Modifier
+                                    .align(
+                                        if(!message.isFromLocalUser) Alignment.Start else Alignment.End
+                                    )
+                            )
                         }
                     }
 
                 }
             }
         }
+
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -218,18 +226,56 @@ fun ChatScreen(
             }
 
         }
+        //image selection
+        var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+        val launcher =
+            rememberLauncherForActivityResult(contract = ActivityResultContracts.OpenDocument()) {
+                it?.let { uri ->
+                    selectedImageUri = uri
+                }
+            }
+
+        selectedImageUri?.let { uri ->
+
+            Log.e("IMAGE", "ChatScreen: $uri", )
+            coroutineScope.launch {
+                val imageData = UriToByteArray().uriToByteArray(
+                    contentResolver = context.contentResolver,
+                    uri = uri
+                )
+                sendImageMessage(imageData!!)
+            }
+
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+
+
             TextField(
                 value = message.value,
                 onValueChange = { message.value = it },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .heightIn(0.dp, 200.dp)
+                    .weight(1f),
                 placeholder = {
                     Text(text = "Message")
+                },
+                leadingIcon = {
+
+
+                        IconButton(onClick = {
+                            launcher.launch(arrayOf("image/*"))
+                        },
+                        ) {
+                            Icon(
+                                painterResource(id = R.drawable.insert_photo_24),
+                                contentDescription = "Image picker"
+                            )
+                        }
                 }
             )
             ButtonWithRecording(isRecording,
@@ -237,12 +283,14 @@ fun ChatScreen(
                 sendAudioMessage = sendAudioMessage,
                 startRecording,
                 stopRecording,
-                createAudioFile)
+                createAudioFile,
+              )
             IconButton(onClick = {
               sendTextMessage(message.value)
                 message.value = ""
                 keyboardController?.hide()
-            }) {
+            },
+               ) {
                 Icon(
                     imageVector = Icons.Default.Send,
                     contentDescription = "Send message"
@@ -258,11 +306,12 @@ fun ChatScreen(
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun ButtonWithRecording(
-    isRecording:Boolean, onRecordingChanged: (Boolean) -> Unit,
+    isRecording:Boolean,
+    onRecordingChanged: (Boolean) -> Unit,
     sendAudioMessage: () -> Unit,
-    startRecording:()->Unit,
+    startRecording: ()->Unit,
     stopRecording: ()->Unit,
-    createAudioFile:(name:String)->Unit,
+    createAudioFile:(name:String)->File,
                         ) {
 
 
@@ -286,30 +335,37 @@ fun ButtonWithRecording(
         onClick = { /* No-op, as the touch events handle recording */ },
         modifier = Modifier
             .padding(8.dp)
+
             .pointerInteropFilter { event ->
                 when {
+
                     event.action == MotionEvent.ACTION_DOWN -> {
 
                         onRecordingChanged(true)
                         coroutineScope.launch(Dispatchers.IO) {
                             createAudioFile("new_recording")
-                            delay(500)
+                            delay(100)
+
                             startRecording()
+
+
                         }
                     }
 
                     event.action == MotionEvent.ACTION_UP -> {
                         onRecordingChanged(false)
                         stopRecording()
-
                         sendAudioMessage()
+
 
                     }
                 }
                 true // Returning true to indicate the event has been consumed
             }
             .scale(scale)
+
     ) {
         Icon(painterResource(id = R.drawable.mic_24 ) , contentDescription ="" )
     }
 }
+

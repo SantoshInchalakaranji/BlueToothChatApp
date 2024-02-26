@@ -2,6 +2,10 @@ package com.prplmnstr.bluetoothchat.presentation
 
 import android.Manifest
 import android.Manifest.permission.ACCESS_FINE_LOCATION
+import android.Manifest.permission.READ_EXTERNAL_STORAGE
+import android.Manifest.permission.READ_MEDIA_AUDIO
+import android.Manifest.permission.READ_MEDIA_IMAGES
+import android.Manifest.permission.WRITE_EXTERNAL_STORAGE
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
@@ -119,7 +123,18 @@ class MainActivity : ComponentActivity() {
             )
         }
 
+        //storage permission
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissionLauncher.launch(arrayOf(READ_MEDIA_IMAGES,READ_MEDIA_AUDIO))
+        } else if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q){
+            permissionLauncher.launch(arrayOf(READ_EXTERNAL_STORAGE))
+        }else{
+            permissionLauncher.launch(arrayOf(READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE))
+        }
+
+        //make device visible for scanning for other devices
         makeDeviceDiscoverable()
+
 
         setContent {
             BlueToothChatTheme {

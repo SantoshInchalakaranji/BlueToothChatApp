@@ -16,6 +16,7 @@ class AndroidAudioPlayer(
         MediaPlayer.create(context, file.toUri()).apply {
             player = this
         }
+
       //  player?.prepare()
     }
 

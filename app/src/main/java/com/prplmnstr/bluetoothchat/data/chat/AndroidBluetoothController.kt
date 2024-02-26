@@ -208,8 +208,9 @@ class AndroidBluetoothController(
                     try{
                         emitAll(
                             service
-                                .listenForIncomingMessages()
+                                .listenForIncomingMessages(_connectedDevice.value.address)
                                 .map {
+
                                     ConnectionResult.TransferSucceeded(it)
                                 }
                         )
@@ -249,7 +250,7 @@ class AndroidBluetoothController(
                     BluetoothDataTransferService(socket).also {
                         dataTransferService = it
                         emitAll(
-                            it.listenForIncomingMessages()
+                            it.listenForIncomingMessages(_connectedDevice.value.address)
 
                                 .map { bluetoothMessage ->
 
@@ -319,7 +320,35 @@ class AndroidBluetoothController(
         )
 
         dataTransferService?.sendMessage(bluetoothMessage.toByteArray().appendAudioMarker())
+        bluetoothMessage.senderAddress = _connectedDevice.value.address
+        Log.e("TAG", "dataTransferService  : came")
 
+        return bluetoothMessage
+    }
+
+    @SuppressLint("HardwareIds")
+    override suspend fun trySendMessage(imageData:ByteArray): BluetoothMessage? {
+        if (!hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) {
+            Toast.makeText(context, "Please Enable Bluetooth Permissions. ", Toast.LENGTH_SHORT)
+                .show()
+            return null
+        }
+
+        if (dataTransferService == null) {
+            return null
+        }
+
+        val bluetoothMessage = BluetoothMessage.ImageMessage(
+            imageData = imageData,
+            senderName = bluetoothAdapter?.name ?: "Unknown name",
+            senderAddress = "",
+            date = DateAndTime.getTodayDate(),
+            time = DateAndTime.getCurrentTime(),
+            isFromLocalUser = true
+        )
+
+        dataTransferService?.sendMessage(bluetoothMessage.toByteArray().appendImageMarker())
+        bluetoothMessage.senderAddress = _connectedDevice.value.address
         Log.e("TAG", "dataTransferService  : came")
 
         return bluetoothMessage
@@ -385,4 +414,8 @@ fun ByteArray.appendTextMarker(): ByteArray {
 // Function to append the marker byte to a byte array
 fun ByteArray.appendAudioMarker(): ByteArray {
     return this + byteArrayOf(Constants.AUDIO_MSG_MARK)
+}
+
+fun ByteArray.appendImageMarker(): ByteArray {
+    return this + byteArrayOf(Constants.IMAGE_MSG_MARK)
 }

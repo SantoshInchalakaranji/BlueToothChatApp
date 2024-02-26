@@ -3,6 +3,7 @@ package com.prplmnstr.bluetoothchat.data.chat
 import android.bluetooth.BluetoothSocket
 import android.util.Log
 import com.prplmnstr.bluetoothchat.data.chat.Constants.Companion.AUDIO_MSG_MARK
+import com.prplmnstr.bluetoothchat.data.chat.Constants.Companion.IMAGE_MSG_MARK
 import com.prplmnstr.bluetoothchat.data.chat.Constants.Companion.TEXT_MSG_MARK
 import com.prplmnstr.bluetoothchat.domain.chat.BluetoothMessage
 import com.prplmnstr.bluetoothchat.domain.chat.TransferFailedException
@@ -18,7 +19,7 @@ import java.nio.ByteBuffer
 class BluetoothDataTransferService(
     private val socket: BluetoothSocket
 ) {
-    fun listenForIncomingMessages(): Flow<BluetoothMessage> {
+    fun listenForIncomingMessages(senderAddress:String): Flow<BluetoothMessage> {
         return flow {
             if (!socket.isConnected) {
                 return@flow
@@ -47,7 +48,7 @@ class BluetoothDataTransferService(
 
                     emit(
                         message.toBluetoothMessage(
-                            isFromLocalUser = false
+                            isFromLocalUser = false,senderAddress
                         )
 
                     )
@@ -60,7 +61,20 @@ class BluetoothDataTransferService(
                     emit(
 
 
-                        combinedByteArray.copyOf(combinedByteArray.size).toBluetoothAudioMessage(false)
+                        combinedByteArray.copyOf(combinedByteArray.size).toBluetoothAudioMessage(
+                            false,senderAddress
+                        )
+                    )
+                    bufferList.clear()
+                }else if(lastByte == IMAGE_MSG_MARK){
+                    Log.d("TAG", "IMAGE MESSAGE RECEIVED")
+                    val combinedByteArray = bufferList.fold(ByteArray(0)) { acc, byteArray ->
+                        acc + byteArray
+                    }
+                    emit(
+                        combinedByteArray.copyOf(combinedByteArray.size).toBluetoothImageMessage(
+                            false,senderAddress
+                        )
                     )
                     bufferList.clear()
                 }
