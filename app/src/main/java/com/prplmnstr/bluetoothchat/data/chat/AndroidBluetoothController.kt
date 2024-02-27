@@ -305,7 +305,7 @@ class AndroidBluetoothController(
             return null
         }
 
-        Log.e("TAG", "trySendMessage  : came")
+
         if (dataTransferService == null) {
             return null
         }
@@ -349,7 +349,7 @@ class AndroidBluetoothController(
 
         dataTransferService?.sendMessage(bluetoothMessage.toByteArray().appendImageMarker())
         bluetoothMessage.senderAddress = _connectedDevice.value.address
-        Log.e("TAG", "dataTransferService  : came")
+
 
         return bluetoothMessage
     }
@@ -417,5 +417,5 @@ fun ByteArray.appendAudioMarker(): ByteArray {
 }
 
 fun ByteArray.appendImageMarker(): ByteArray {
-    return this + byteArrayOf(Constants.IMAGE_MSG_MARK)
+    return byteArrayOf(Constants.IMAGE_MSG_MARK)+ this +byteArrayOf(Constants.IMAGE_MSG_MARK2)+ byteArrayOf(Constants.IMAGE_MSG_MARK)
 }

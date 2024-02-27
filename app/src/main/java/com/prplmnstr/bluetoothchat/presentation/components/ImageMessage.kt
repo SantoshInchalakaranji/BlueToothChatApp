@@ -13,11 +13,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.prplmnstr.bluetoothchat.R
 import com.prplmnstr.bluetoothchat.domain.chat.BluetoothMessage
 import com.prplmnstr.bluetoothchat.ui.theme.BlueViolet3
 import com.prplmnstr.bluetoothchat.ui.theme.LightRed
@@ -44,11 +47,16 @@ fun ImageMessage(
             .padding(16.dp)
     ) {
 
-        val painter = byteArrayToPainter(message.imageData)
-        painter.let {
-            Image(painter = painter!!, contentDescription = "",
+        val imageBitmap = byteArrayToPainter(message.imageData)
+        if(imageBitmap!=null){
+            Image(bitmap =imageBitmap , contentDescription = "",
+                modifier = Modifier.size(250.dp))
+        }else{
+            Image(
+                painterResource(id = R.drawable.place_holder) , contentDescription = "",
                 modifier = Modifier.size(250.dp))
         }
+
 
         Text(
             text = message.time,
@@ -58,11 +66,11 @@ fun ImageMessage(
         )
     }
 }
-fun byteArrayToPainter(byteArray: ByteArray): Painter? {
+fun byteArrayToPainter(byteArray: ByteArray): ImageBitmap? {
     return try {
         val bitmap = android.graphics.BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
         val imageBitmap = bitmap.asImageBitmap()
-        BitmapPainter(imageBitmap)
+       imageBitmap
     } catch (e: Exception) {
         e.printStackTrace()
         null

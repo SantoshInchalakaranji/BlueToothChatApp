@@ -4,6 +4,7 @@ import android.bluetooth.BluetoothSocket
 import android.util.Log
 import com.prplmnstr.bluetoothchat.data.chat.Constants.Companion.AUDIO_MSG_MARK
 import com.prplmnstr.bluetoothchat.data.chat.Constants.Companion.IMAGE_MSG_MARK
+import com.prplmnstr.bluetoothchat.data.chat.Constants.Companion.IMAGE_MSG_MARK2
 import com.prplmnstr.bluetoothchat.data.chat.Constants.Companion.TEXT_MSG_MARK
 import com.prplmnstr.bluetoothchat.domain.chat.BluetoothMessage
 import com.prplmnstr.bluetoothchat.domain.chat.TransferFailedException
@@ -28,6 +29,8 @@ class BluetoothDataTransferService(
             val bufferList = mutableListOf<ByteArray>()
             var buffer = ByteArray(990)
             var msg = ""
+            var firstByte : Byte? = null
+            var secondLastByte : Byte? = null
             while (true) {
                 val byteCount = try {
                     socket.inputStream.read(buffer)
@@ -36,11 +39,24 @@ class BluetoothDataTransferService(
                     throw TransferFailedException()
                 }
                 bufferList.add(buffer.copyOfRange(0,byteCount))
+                if(firstByte==null){
+                    firstByte = buffer[0]
+                }
+
                 val lastByte= buffer[byteCount-1]
+                if(buffer.size>1){
+                    secondLastByte = buffer[byteCount-2]
+                }else{
+                    bufferList.lastOrNull()?.let { lastBuffer ->
+                       secondLastByte = lastBuffer[lastBuffer.size-1]
+                    }
+                }
 
                 //text message received
-                if(lastByte == TEXT_MSG_MARK){
+                if(lastByte == TEXT_MSG_MARK && firstByte!= IMAGE_MSG_MARK){
                     Log.d("TAG", "TEXT MESSAGE RECEIVED")
+                    Log.d("TAG", "lastbyte : ${lastByte.toString()}")
+                    Log.d("TAG", "IMAGE_MSG_MARK : ${IMAGE_MSG_MARK.toString()}")
                     val combinedByteArray = bufferList.fold(ByteArray(0)) { acc, byteArray ->
                         acc + byteArray
                     }
@@ -52,8 +68,9 @@ class BluetoothDataTransferService(
                         )
 
                     )
+                    firstByte = null
                     bufferList.clear()
-                }else if(lastByte == AUDIO_MSG_MARK){
+                }else if(lastByte == AUDIO_MSG_MARK && firstByte!= IMAGE_MSG_MARK){
                     Log.d("TAG", "AUDIO MESSAGE RECEIVED")
                     val combinedByteArray = bufferList.fold(ByteArray(0)) { acc, byteArray ->
                         acc + byteArray
@@ -65,17 +82,21 @@ class BluetoothDataTransferService(
                             false,senderAddress
                         )
                     )
+                    firstByte = null
                     bufferList.clear()
-                }else if(lastByte == IMAGE_MSG_MARK){
+                }else if(lastByte == IMAGE_MSG_MARK && firstByte== IMAGE_MSG_MARK && secondLastByte == IMAGE_MSG_MARK2){
                     Log.d("TAG", "IMAGE MESSAGE RECEIVED")
                     val combinedByteArray = bufferList.fold(ByteArray(0)) { acc, byteArray ->
                         acc + byteArray
                     }
+                    val imageByteArray = combinedByteArray.copyOfRange(1, combinedByteArray.size - 1)
                     emit(
-                        combinedByteArray.copyOf(combinedByteArray.size).toBluetoothImageMessage(
-                            false,senderAddress
+                        imageByteArray.toBluetoothImageMessage(
+                            false, senderAddress
                         )
                     )
+                    firstByte = null
+                    secondLastByte = null
                     bufferList.clear()
                 }
             }
@@ -88,7 +109,6 @@ class BluetoothDataTransferService(
                 socket.outputStream.write(bytes)
                 Log.e("TAG", "sendMessage:bytecount: ${bytes}--${bytes}")
             } catch (e: IOException) {
-                Log.e("TAG", "sendMessage Error: ${e.message}++///+++ ${e.cause}")
                 e.printStackTrace()
                 return@withContext false
             }

@@ -182,6 +182,7 @@ class BluetoothViewModel @Inject constructor(
         viewModelScope.launch {
             val bluetoothMessage =  bluetoothController.trySendMessage(imageData)
             if (bluetoothMessage != null) {
+
                 _state.update {
                     it.copy(
                         messages = it.messages + bluetoothMessage
@@ -190,12 +191,15 @@ class BluetoothViewModel @Inject constructor(
                 val path =
                     when(bluetoothMessage){
                         is BluetoothMessage.AudioMessage -> {""}
-                        is BluetoothMessage.ImageMessage -> { externalStorage.saveImageFile(UUID.randomUUID().toString(),bluetoothMessage)}
+                        is BluetoothMessage.ImageMessage -> { externalStorage.saveImageFile(UUID.randomUUID().toString(),bluetoothMessage)
+
+                        }
                         is BluetoothMessage.TextMessage -> {""}
                     }
                 Log.e("IMAGE", "saveImageFile: $path saved", )
                 insertMessage(bluetoothMessage.toMessageEntity(path))
             }
+
         }
     }
 

@@ -1,7 +1,5 @@
 package com.prplmnstr.bluetoothchat.presentation.components
 
-import android.content.ContentResolver
-import android.content.Context
 import android.net.Uri
 import android.util.Log
 import android.view.MotionEvent
@@ -15,12 +13,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Send
@@ -31,6 +28,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
@@ -44,27 +43,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import coil.compose.rememberImagePainter
 import com.prplmnstr.bluetoothchat.R
 import com.prplmnstr.bluetoothchat.domain.chat.BluetoothDeviceDomain
 import com.prplmnstr.bluetoothchat.domain.chat.BluetoothMessage
 import com.prplmnstr.bluetoothchat.domain.chat.image.UriToByteArray
 import com.prplmnstr.bluetoothchat.presentation.BluetoothUiState
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.ByteArrayOutputStream
 import java.io.File
-import java.io.IOException
-import kotlin.math.log
 
 
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalMaterial3Api::class)
@@ -102,7 +96,17 @@ fun ChatScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
 
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
+    val coroutineScope =  rememberCoroutineScope()
+
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    val launcher =
+        rememberLauncherForActivityResult(contract = ActivityResultContracts.OpenDocument()) {
+            it?.let { uri ->
+                selectedImageUri = uri
+            }
+        }
+
+    val uriToByteArray=UriToByteArray()
 
     Column(
         modifier = Modifier
@@ -189,12 +193,14 @@ fun ChatScreen(
                                 )
                         }
                         is BluetoothMessage.ImageMessage ->{
+
                             ImageMessage(
                                 message =message,
                                 modifier = Modifier
                                     .align(
                                         if(!message.isFromLocalUser) Alignment.Start else Alignment.End
                                     )
+
                             )
                         }
                     }
@@ -227,26 +233,25 @@ fun ChatScreen(
 
         }
         //image selection
-        var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
-        val launcher =
-            rememberLauncherForActivityResult(contract = ActivityResultContracts.OpenDocument()) {
-                it?.let { uri ->
-                    selectedImageUri = uri
-                }
-            }
 
         selectedImageUri?.let { uri ->
 
-            Log.e("IMAGE", "ChatScreen: $uri", )
-            coroutineScope.launch {
-                val imageData = UriToByteArray().uriToByteArray(
-                    contentResolver = context.contentResolver,
-                    uri = uri
-                )
+            Log.e("IMAGE", "ChatScreen: ${uri.toString()}", )
+
+                 val imageData = uriToByteArray.uriToByteArray(
+                     contentResolver = context.contentResolver,
+                     uri = uri
+                 )
+                selectedImageUri = null
+            Toast.makeText(context, "Sending image please wait...", Toast.LENGTH_SHORT).show()
                 sendImageMessage(imageData!!)
-            }
+
+
 
         }
+
+
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -268,6 +273,7 @@ fun ChatScreen(
 
 
                         IconButton(onClick = {
+
                             launcher.launch(arrayOf("image/*"))
                         },
                         ) {
@@ -286,6 +292,7 @@ fun ChatScreen(
                 createAudioFile,
               )
             IconButton(onClick = {
+
               sendTextMessage(message.value)
                 message.value = ""
                 keyboardController?.hide()

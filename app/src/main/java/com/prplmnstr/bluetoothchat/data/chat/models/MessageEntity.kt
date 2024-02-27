@@ -51,7 +51,7 @@ fun MessageEntity.toBluetoothMessage(externalStorage: ExternalStorage): Bluetoot
         }
         MessageType.IMAGE.value -> {
             BluetoothMessage.ImageMessage(
-                imageData = data.toByteArray(),
+                imageData = externalStorage.retrieveImageFile(data)?: ByteArray(0),
                 date = date,
                 time = time,
                 senderName = senderName,

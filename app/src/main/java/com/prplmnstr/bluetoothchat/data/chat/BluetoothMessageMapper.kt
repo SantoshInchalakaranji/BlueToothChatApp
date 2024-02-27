@@ -125,7 +125,7 @@ fun ByteArray.toBluetoothImageMessage(isFromLocalUser: Boolean, senderAddress:St
     val imageBytes = ByteArray(imageLength)
 
     dataInputStream.read(imageBytes)
-
+    Log.e("TAG", "toBluetoothImageMessage: ${imageBytes.contentToString()}-----${imageBytes.size}")
     dataInputStream.close()
 
     return BluetoothMessage.ImageMessage(

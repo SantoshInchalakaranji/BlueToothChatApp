@@ -8,22 +8,21 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 
 class UriToByteArray {
-    suspend fun uriToByteArray(contentResolver: ContentResolver, uri: Uri): ByteArray? {
-        return withContext(Dispatchers.IO) {
-            try {
-                contentResolver.openInputStream(uri)?.use { inputStream ->
-                    val outputStream = ByteArrayOutputStream()
-                    val buffer = ByteArray(1024)
-                    var bytesRead: Int
-                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                        outputStream.write(buffer, 0, bytesRead)
-                    }
-                    outputStream.toByteArray()
+    fun uriToByteArray(contentResolver: ContentResolver, uri: Uri): ByteArray? {
+        return try {
+            contentResolver.openInputStream(uri)?.use { inputStream ->
+                val bufferSize = 1024
+                val buffer = ByteArray(bufferSize)
+                val outputStream = ByteArrayOutputStream()
+                var bytesRead: Int
+                while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                    outputStream.write(buffer, 0, bytesRead)
                 }
-            } catch (e: IOException) {
-                e.printStackTrace()
-                null
+                outputStream.toByteArray()
             }
+        } catch (e: IOException) {
+            e.printStackTrace()
+            null
         }
     }
 
