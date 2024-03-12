@@ -1,4 +1,4 @@
-package com.prplmnstr.bluetoothchat.framework.broadcastRecievers
+package com.prplmnstr.bluetoothchat.framework.bluetooth.broadcastRecievers
 
 import android.bluetooth.BluetoothDevice
 import android.content.BroadcastReceiver

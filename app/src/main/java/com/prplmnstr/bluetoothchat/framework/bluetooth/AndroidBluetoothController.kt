@@ -22,8 +22,8 @@ import com.prplmnstr.bluetoothchat.domain.chat.bluetooth.entity.BluetoothMessage
 import com.prplmnstr.bluetoothchat.domain.chat.bluetooth.ConnectionResult
 import com.prplmnstr.bluetoothchat.domain.chat.util.Constants
 import com.prplmnstr.bluetoothchat.domain.chat.util.DateAndTime
-import com.prplmnstr.bluetoothchat.framework.broadcastRecievers.BluetoothStateReceiver
-import com.prplmnstr.bluetoothchat.framework.broadcastRecievers.FoundDeviceReceiver
+import com.prplmnstr.bluetoothchat.framework.bluetooth.broadcastRecievers.BluetoothStateReceiver
+import com.prplmnstr.bluetoothchat.framework.bluetooth.broadcastRecievers.FoundDeviceReceiver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
