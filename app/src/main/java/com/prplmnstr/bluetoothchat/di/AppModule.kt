@@ -1,11 +1,11 @@
 package com.prplmnstr.bluetoothchat.di
 
 import android.content.Context
-import com.prplmnstr.bluetoothchat.data.chat.AndroidBluetoothController
+import com.prplmnstr.bluetoothchat.framework.bluetooth.AndroidBluetoothController
 import com.prplmnstr.bluetoothchat.data.chat.models.MessageEntity
 import com.prplmnstr.bluetoothchat.data.chat.realm.RealmDaoImpl
 import com.prplmnstr.bluetoothchat.data.chat.storage.ExternalStorage
-import com.prplmnstr.bluetoothchat.domain.chat.BluetoothController
+import com.prplmnstr.bluetoothchat.domain.chat.bluetooth.BluetoothController
 import com.prplmnstr.bluetoothchat.domain.chat.playback.AndroidAudioPlayer
 import com.prplmnstr.bluetoothchat.domain.chat.recorder.AndroidAudioRecorder
 import dagger.Module
@@ -63,6 +63,7 @@ object AppModule {
                 MessageEntity::class,
             ),
         )
+        Realm.compactRealm(realmConfig)
         return Realm.open(realmConfig)
     }
 

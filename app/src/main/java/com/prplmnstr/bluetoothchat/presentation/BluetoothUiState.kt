@@ -1,8 +1,8 @@
 package com.prplmnstr.bluetoothchat.presentation
 
-import com.prplmnstr.bluetoothchat.domain.chat.BluetoothDevice
-import com.prplmnstr.bluetoothchat.domain.chat.BluetoothDeviceDomain
-import com.prplmnstr.bluetoothchat.domain.chat.BluetoothMessage
+import com.prplmnstr.bluetoothchat.domain.chat.bluetooth.entity.BluetoothDevice
+import com.prplmnstr.bluetoothchat.domain.chat.bluetooth.BluetoothDeviceDomain
+import com.prplmnstr.bluetoothchat.domain.chat.bluetooth.entity.BluetoothMessage
 
 data class BluetoothUiState(
     val scannedDevices: List<BluetoothDevice> = emptyList(),
@@ -12,6 +12,6 @@ data class BluetoothUiState(
     val isConnecting: Boolean = false,
     val errorMessage: String? = null,
 
-    var peerDevice:BluetoothDeviceDomain? = null
+    var peerDevice: BluetoothDeviceDomain? = null
 
 )

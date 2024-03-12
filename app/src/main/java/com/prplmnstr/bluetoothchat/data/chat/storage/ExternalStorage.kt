@@ -4,16 +4,11 @@ import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
-import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
-import com.prplmnstr.bluetoothchat.domain.chat.BluetoothMessage
-import dagger.hilt.android.qualifiers.ApplicationContext
+import com.prplmnstr.bluetoothchat.domain.chat.bluetooth.entity.BluetoothMessage
 import java.io.ByteArrayOutputStream
-import java.io.File
-import java.io.FileOutputStream
 import java.io.IOException
-import kotlin.math.log
 
 class ExternalStorage( private val context: Context) {
 

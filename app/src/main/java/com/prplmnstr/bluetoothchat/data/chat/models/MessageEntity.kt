@@ -2,7 +2,7 @@ package com.prplmnstr.bluetoothchat.data.chat.models
 
 import android.util.Log
 import com.prplmnstr.bluetoothchat.data.chat.storage.ExternalStorage
-import com.prplmnstr.bluetoothchat.domain.chat.BluetoothMessage
+import com.prplmnstr.bluetoothchat.domain.chat.bluetooth.entity.BluetoothMessage
 import io.realm.kotlin.types.RealmObject
 import io.realm.kotlin.types.annotations.PrimaryKey
 import org.mongodb.kbson.ObjectId
