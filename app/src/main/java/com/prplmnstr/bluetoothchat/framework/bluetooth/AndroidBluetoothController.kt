@@ -118,8 +118,6 @@ class AndroidBluetoothController(
             if (newDevice in devices) devices else devices + newDevice
 
         }
-
-
     }
 
 

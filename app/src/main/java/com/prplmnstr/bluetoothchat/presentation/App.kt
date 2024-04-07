@@ -66,7 +66,8 @@ fun App(
                 getCurrentPosition = viewModel::getCurrentPosition,
                 saveByteArrayToFile = viewModel::saveByteArrayToFile,
                 setPlayer = viewModel::setPlayer,
-                deleteMessage = viewModel::deleteMessage
+                deleteMessage = viewModel::deleteMessage,
+                exportChat = viewModel::exportChatToTextFile
 
             )
         }

@@ -29,7 +29,6 @@ object AppModule {
     }
 
     @Provides
-    @Singleton
     fun provideAudioPlayer(@ApplicationContext context: Context): AndroidAudioPlayer {
         return AndroidAudioPlayer(context)
     }

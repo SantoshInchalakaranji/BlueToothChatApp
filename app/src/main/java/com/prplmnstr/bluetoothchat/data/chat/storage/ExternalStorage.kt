@@ -4,11 +4,15 @@ import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
+import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import com.prplmnstr.bluetoothchat.domain.chat.bluetooth.entity.BluetoothMessage
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileWriter
 import java.io.IOException
+import java.util.UUID
 
 class ExternalStorage( private val context: Context) {
 
@@ -126,6 +130,56 @@ class ExternalStorage( private val context: Context) {
         } ?: return null
 
         return null
+    }
+
+    fun exportChatToText(messages : List<BluetoothMessage>) : String{
+
+            val dir = createTextFileDirectory()
+
+
+        if (dir != null) {
+            val file = File(dir, "${UUID.randomUUID()}.txt")
+            try {
+                FileWriter(file).use { writer ->
+                    messages.forEach { message ->
+                        var sender = ""
+                        val line = when (message) {
+                            is BluetoothMessage.TextMessage -> {
+                              sender =   if(message.isFromLocalUser) "You" else message.senderName
+                                "${sender} @ ${message.date} ${message.time}: ${message.text}\n"
+                            }
+                            is BluetoothMessage.AudioMessage -> {
+                                sender =   if(message.isFromLocalUser) "You" else message.senderName
+                                "${sender} @ ${message.date} ${message.time}: Audio Message\n" // You can customize this based on your requirements
+                            }
+                            is BluetoothMessage.ImageMessage -> {
+                                sender =   if(message.isFromLocalUser) "You" else message.senderName
+                                "${sender} @ ${message.date} ${message.time}: Image Message\n" // You can customize this based on your requirements
+                            }
+                        }
+                        writer.append(line)
+                    }
+                    writer.flush()
+                    writer.close()
+                }
+                return file.absolutePath
+            } catch (e: IOException) {
+                Log.e("SaveTextFile", "Error writing text to file: ${e.message}")
+            }
+        } else {
+            Log.e("SaveTextFile", "Error creating text file directory")
+        }
+        return ""
+    }
+
+
+    private fun createTextFileDirectory(): File? {
+        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        val dir = File(downloadsDir, "BluetoothChatApp")
+        if (!dir.exists()) {
+            dir.mkdirs()
+        }
+        return dir
     }
 
 

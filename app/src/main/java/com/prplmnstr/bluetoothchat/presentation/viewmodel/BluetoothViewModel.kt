@@ -159,7 +159,7 @@ class BluetoothViewModel @Inject constructor(
                     is BluetoothMessage.ImageMessage -> {""}
                     is BluetoothMessage.TextMessage -> {""}
                 }
-                Log.e("TAG", "saveAudioFile: $path saved", )
+                Log.e("TAGG", "saveAudioFile: $path saved", )
                 insertMessage(bluetoothMessage.toMessageEntity(path))
             }
         }
@@ -353,6 +353,10 @@ class BluetoothViewModel @Inject constructor(
 
     }
 
+    fun exportChatToTextFile(messages: List<BluetoothMessage>) : String{
+     return externalStorage.exportChatToText(messages)
+    }
+
     fun deleteMessage(message: BluetoothMessage){
         val position = _state.value.messages.indexOf(message)
         val messageEntity = messageEntityList.get(position)
@@ -364,7 +368,10 @@ class BluetoothViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
+        cacheDir.deleteOnExit()
         //   bluetoothController.release()
         Log.e("TAG", "Viewmodel  : cleared ")
     }
+
+
 }

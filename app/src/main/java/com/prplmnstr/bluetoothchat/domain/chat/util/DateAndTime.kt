@@ -29,6 +29,13 @@ class DateAndTime {
                 return formattedDate
             }
         }
+        fun getPreviousDate(currentDate: String): String {
+            val formatter = DateTimeFormatter.ofPattern("dd MMM, yyyy", Locale.ENGLISH)
+            val date = LocalDate.parse(currentDate, formatter)
+            val previousDate = date.minusDays(1)
+            return previousDate.format(formatter)
+        }
+
 
         fun getCurrentTime(): String {
 

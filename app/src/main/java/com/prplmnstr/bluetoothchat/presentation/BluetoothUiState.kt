@@ -11,7 +11,6 @@ data class BluetoothUiState(
     val isConnected: Boolean = false,
     val isConnecting: Boolean = false,
     val errorMessage: String? = null,
-
     var peerDevice: BluetoothDeviceDomain? = null
 
 )

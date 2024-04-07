@@ -1,7 +1,9 @@
 package com.prplmnstr.bluetoothchat.presentation.chatScreen.components
 
 import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,12 +32,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.prplmnstr.bluetoothchat.R
 import com.prplmnstr.bluetoothchat.domain.chat.bluetooth.entity.BluetoothMessage
+import com.prplmnstr.bluetoothchat.domain.chat.playback.AndroidAudioPlayer
 import com.prplmnstr.bluetoothchat.ui.theme.BlueViolet3
 import com.prplmnstr.bluetoothchat.ui.theme.LightRed
 import kotlinx.coroutines.delay
 import java.io.File
+import java.util.UUID
+import kotlin.math.roundToInt
 
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AudioMessage(
     message: BluetoothMessage.AudioMessage,
@@ -48,6 +54,7 @@ fun AudioMessage(
     createAudioFile:(name:String)->File,
     saveByteArrayToFile:(ByteArray,File)->Unit,
     setPlayer: (File)->Unit,
+    deleteMessage:(message: BluetoothMessage) -> Unit,
 ) {
     var isPlaying by remember { mutableStateOf(false) }
     var progress by remember { mutableStateOf(0f) }
@@ -55,11 +62,20 @@ fun AudioMessage(
     var audioFile by rememberSaveable { mutableStateOf<File?>(null) }
 
 
+
     val context = LocalContext.current
 
+    var audioPlayer by remember {
+        mutableStateOf(AndroidAudioPlayer(context))
+    }
 
+    if(audioFile==null){
 
-
+        audioFile =  createAudioFile(UUID.randomUUID().toString())
+        saveByteArrayToFile(message.audioData,audioFile!!)
+        audioPlayer.playFile(audioFile!!)
+        duration = audioPlayer.getAudioDuration().toFloat()
+    }
 
     LaunchedEffect(isPlaying) {
 
@@ -87,7 +103,17 @@ fun AudioMessage(
             .background(
                 if (message.isFromLocalUser) BlueViolet3 else LightRed
             )
-            .padding(16.dp),
+            .padding(16.dp)
+            .combinedClickable(
+                onClick = {},
+                onDoubleClick = {},
+                onLongClick = {
+                    deleteMessage(message)
+                    Toast
+                        .makeText(context, "Message Deleted", Toast.LENGTH_SHORT)
+                        .show()
+                }
+            ),
     ) {
 
 
@@ -100,28 +126,18 @@ fun AudioMessage(
             IconButton(
                 onClick = {
                     if (isPlaying) {
-                        stopPlaying()
+                        audioPlayer.stop()
                         isPlaying = !isPlaying
 
                     } else {
                        if(message.audioData.isEmpty()){
                            Toast.makeText(context, "Audio data not found. File may be deleted from device.", Toast.LENGTH_SHORT).show()
                        }else{
-                           if(audioFile==null){
 
-                               audioFile =  createAudioFile("temp")
-                               saveByteArrayToFile(message.audioData,audioFile!!)
-                               setPlayer(audioFile!!)
-                               duration = getAudioDuration().toFloat()
-                           }
-                           startPlaying()
+                           audioPlayer.start()
                            isPlaying = !isPlaying
                        }
-
-
                     }
-
-
                 },
 
                 content = {
@@ -137,13 +153,20 @@ fun AudioMessage(
                     )
                 }
             )
-
+            val durationInSeconds = duration / 1000.0
+            val formattedDuration = String.format("%.1fs", durationInSeconds)
+            Text(
+                text = if(progress == 0f) formattedDuration else String.format("%.1fs", (progress/1000)),
+                fontSize = 10.sp,
+                color = Color.Black,
+                modifier = Modifier.padding(8.dp)
+            )
             // Slider for seeking
             Slider(
                 value = progress,
                 onValueChange = {
                     progress = it
-                    seekTo(it.toInt())
+                    audioPlayer.seekTo(it.toInt())
 
                 },
                 valueRange = 0f..duration,
@@ -159,6 +182,8 @@ fun AudioMessage(
         }
 
     }
+
+
 
 }
 

@@ -1,7 +1,10 @@
 package com.prplmnstr.bluetoothchat.presentation.chatScreen.components
 
+import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -14,6 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -22,12 +26,14 @@ import com.prplmnstr.bluetoothchat.domain.chat.bluetooth.entity.BluetoothMessage
 import com.prplmnstr.bluetoothchat.ui.theme.BlueViolet3
 import com.prplmnstr.bluetoothchat.ui.theme.LightRed
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ImageMessage(
     message: BluetoothMessage.ImageMessage,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    deleteMessage:(message: BluetoothMessage) -> Unit,
 ) {
-
+    val context = LocalContext.current
     Column(
         modifier = modifier
             .clip(
@@ -42,6 +48,16 @@ fun ImageMessage(
                 if (message.isFromLocalUser) BlueViolet3 else LightRed
             )
             .padding(16.dp)
+            .combinedClickable(
+                onClick = {},
+                onDoubleClick = {},
+                onLongClick = {
+                    deleteMessage(message)
+                    Toast
+                        .makeText(context, "Message Deleted", Toast.LENGTH_SHORT)
+                        .show()
+                }
+            )
     ) {
 
         val imageBitmap = byteArrayToPainter(message.imageData)

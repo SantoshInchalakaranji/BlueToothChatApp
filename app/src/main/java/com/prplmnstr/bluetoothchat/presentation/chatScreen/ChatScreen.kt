@@ -13,8 +13,15 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.layout.*
-
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -49,7 +56,9 @@ import androidx.navigation.NavController
 import com.prplmnstr.bluetoothchat.R
 import com.prplmnstr.bluetoothchat.domain.chat.bluetooth.BluetoothDeviceDomain
 import com.prplmnstr.bluetoothchat.domain.chat.bluetooth.entity.BluetoothMessage
+import com.prplmnstr.bluetoothchat.domain.chat.bluetooth.entity.toMessageEntity
 import com.prplmnstr.bluetoothchat.domain.chat.image.UriToByteArray
+import com.prplmnstr.bluetoothchat.domain.chat.util.DateAndTime
 import com.prplmnstr.bluetoothchat.presentation.BluetoothUiState
 import com.prplmnstr.bluetoothchat.presentation.chatScreen.components.AudioMessage
 import com.prplmnstr.bluetoothchat.presentation.chatScreen.components.ChatMessage
@@ -65,27 +74,27 @@ import java.io.File
 fun ChatScreen(
 
     navController: NavController,
-    state:BluetoothUiState,
-    sendTextMessage:(String)->Unit,
-    sendAudioMessage:()->Unit,
-    sendImageMessage:(ByteArray)->Unit,
-    connectToDevice:(BluetoothDeviceDomain)->Unit,
-    disconnectFromDevice:()->Unit,
-    startRecording: ()->Unit,
+    state: BluetoothUiState,
+    sendTextMessage: (String) -> Unit,
+    sendAudioMessage: () -> Unit,
+    sendImageMessage: (ByteArray) -> Unit,
+    connectToDevice: (BluetoothDeviceDomain) -> Unit,
+    disconnectFromDevice: () -> Unit,
+    startRecording: () -> Unit,
 
-    stopRecording: ()->Unit,
-    createAudioFile:(name:String)->File,
-    startPlaying: ()->Unit,
-    stopPlaying:()->Unit,
-    seekTo:(position:Int)->Unit,
-    getAudioDuration:() ->Int,
-    getCurrentPosition:() ->Int,
-    saveByteArrayToFile:(ByteArray,File)->Unit,
-    setPlayer: (File)->Unit,
-    deleteMessage:(message: BluetoothMessage) -> Unit
+    stopRecording: () -> Unit,
+    createAudioFile: (name: String) -> File,
+    startPlaying: () -> Unit,
+    stopPlaying: () -> Unit,
+    seekTo: (position: Int) -> Unit,
+    getAudioDuration: () -> Int,
+    getCurrentPosition: () -> Int,
+    saveByteArrayToFile: (ByteArray, File) -> Unit,
+    setPlayer: (File) -> Unit,
+    deleteMessage: (message: BluetoothMessage) -> Unit,
+    exportChat : (messages: List<BluetoothMessage>) -> String
 
-    ) {
-
+) {
 
 
     var isRecording by remember { mutableStateOf(false) }
@@ -95,8 +104,7 @@ fun ChatScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
 
     val context = LocalContext.current
-    val coroutineScope =  rememberCoroutineScope()
-
+    val coroutineScope = rememberCoroutineScope()
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     val launcher =
         rememberLauncherForActivityResult(contract = ActivityResultContracts.OpenDocument()) {
@@ -105,7 +113,7 @@ fun ChatScreen(
             }
         }
 
-    val uriToByteArray=UriToByteArray()
+    val uriToByteArray = UriToByteArray()
 
     Column(
         modifier = Modifier
@@ -120,20 +128,33 @@ fun ChatScreen(
         ) {
 
             Text(
-                text = state.peerDevice?.name?:"No Name",
+                text = state.peerDevice?.name ?: "No Name",
                 modifier = Modifier.weight(1f)
             )
 
-            if(state.isConnecting){
+            IconButton(onClick = {
+                 val path =   exportChat(state.messages)
+                Toast.makeText(context, "Chat saved $path", Toast.LENGTH_SHORT).show()
+                Log.i("TAG", "ChatScreen: $path")
+            }
+
+            ) {
+                Icon(
+                    painterResource(id =R.drawable.export_chat ),
+                    contentDescription = "Export Chat"
+                )
+            }
+
+            if (state.isConnecting) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(24.dp),
-                    color =  MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.primary,
                     strokeWidth = 2.dp
                 )
 
-            } else if(state.isConnected){
-                IconButton(onClick ={
-                    // disconnectFromDevice()
+            } else if (state.isConnected) {
+                IconButton(onClick = {
+                     disconnectFromDevice()
                 }
 
                 ) {
@@ -142,8 +163,8 @@ fun ChatScreen(
                         contentDescription = "Disconnect"
                     )
                 }
-            }else{
-                Button(onClick ={ state.peerDevice?.let { connectToDevice(it) } } ) {
+            } else {
+                Button(onClick = { state.peerDevice?.let { connectToDevice(it) } }) {
                     Text(text = "Connect")
                 }
             }
@@ -157,48 +178,77 @@ fun ChatScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             reverseLayout = true
         ) {
+
             items(state.messages) { message ->
                 Column(
                     modifier = Modifier.fillMaxWidth()
                 ) {
+                    val date = message.toMessageEntity("").date
+                    val nextIndex = state.messages.indexOf(message) + 1
+                    if (nextIndex >= state.messages.size) {
+                        Text(
+                            text = if (date == DateAndTime.getTodayDate()) {
+                                "Today"
+                            } else if (date == DateAndTime.getPreviousDate(DateAndTime.getTodayDate())) {
+                                "Yesterday"
+                            } else date,
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        )
+                    } else if (date != state.messages[nextIndex].toMessageEntity("").date) {
+                        Text(
+                            text = if (date == DateAndTime.getTodayDate()) {
+                                "Today"
+                            } else if (date == DateAndTime.getPreviousDate(DateAndTime.getTodayDate())) {
+                                "Yesterday"
+                            } else date,
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        )
+                    }
 
-                    when(message){
-                        is BluetoothMessage.TextMessage ->{
+                    when (message) {
+                        is BluetoothMessage.TextMessage -> {
+
                             ChatMessage(
                                 message = message,
                                 modifier = Modifier
                                     .align(
-                                        if(message.isFromLocalUser) Alignment.End else Alignment.Start
+                                        if (message.isFromLocalUser) Alignment.End else Alignment.Start
                                     ),
                                 deleteMessage = deleteMessage,
 
-                            )
-                        }
-                        is BluetoothMessage.AudioMessage ->{
-                                AudioMessage(  message = message,
-                                    modifier = Modifier
-                                        .align(
-                                            if(!message.isFromLocalUser) Alignment.Start else Alignment.End
-                                        ),
-
-                                    startPlaying,
-                                    stopPlaying,
-                                    seekTo,
-                                    getAudioDuration,
-                                    getCurrentPosition,
-                                    createAudioFile,
-                                    saveByteArrayToFile,
-                                     setPlayer
                                 )
                         }
-                        is BluetoothMessage.ImageMessage ->{
 
-                            ImageMessage(
-                                message =message,
+                        is BluetoothMessage.AudioMessage -> {
+
+                            AudioMessage(
+                                message = message,
                                 modifier = Modifier
                                     .align(
-                                        if(!message.isFromLocalUser) Alignment.Start else Alignment.End
-                                    )
+                                        if (!message.isFromLocalUser) Alignment.Start else Alignment.End
+                                    ),
+
+                                startPlaying,
+                                stopPlaying,
+                                seekTo,
+                                getAudioDuration,
+                                getCurrentPosition,
+                                createAudioFile,
+                                saveByteArrayToFile,
+                                setPlayer,
+                                deleteMessage
+                            )
+                        }
+
+                        is BluetoothMessage.ImageMessage -> {
+
+                            ImageMessage(
+                                message = message,
+                                modifier = Modifier
+                                    .align(
+                                        if (!message.isFromLocalUser) Alignment.Start else Alignment.End
+                                    ),
+                                deleteMessage
 
                             )
                         }
@@ -223,11 +273,14 @@ fun ChatScreen(
                     onClick = { },
                     label = { Text("Recording...") },
                     leadingIcon = {
-                        Icon(painterResource(id =R.drawable.mic_24
-                        ), contentDescription = "")
+                        Icon(
+                            painterResource(
+                                id = R.drawable.mic_24
+                            ), contentDescription = ""
+                        )
                     },
 
-                )
+                    )
             }
 
         }
@@ -235,16 +288,15 @@ fun ChatScreen(
 
         selectedImageUri?.let { uri ->
 
-            Log.e("IMAGE", "ChatScreen: ${uri.toString()}", )
+            Log.e("IMAGE", "ChatScreen: ${uri.toString()}")
 
-                 val imageData = uriToByteArray.uriToByteArray(
-                     contentResolver = context.contentResolver,
-                     uri = uri
-                 )
-                selectedImageUri = null
+            val imageData = uriToByteArray.uriToByteArray(
+                contentResolver = context.contentResolver,
+                uri = uri
+            )
+            selectedImageUri = null
             Toast.makeText(context, "Sending image please wait...", Toast.LENGTH_SHORT).show()
-                sendImageMessage(imageData!!)
-
+            sendImageMessage(imageData!!)
 
 
         }
@@ -271,32 +323,35 @@ fun ChatScreen(
                 leadingIcon = {
 
 
-                        IconButton(onClick = {
+                    IconButton(
+                        onClick = {
 
                             launcher.launch(arrayOf("image/*"))
                         },
-                        ) {
-                            Icon(
-                                painterResource(id = R.drawable.insert_photo_24),
-                                contentDescription = "Image picker"
-                            )
-                        }
+                    ) {
+                        Icon(
+                            painterResource(id = R.drawable.insert_photo_24),
+                            contentDescription = "Image picker"
+                        )
+                    }
                 }
             )
-            ButtonWithRecording(isRecording,
+            ButtonWithRecording(
+                isRecording,
                 onRecordingChanged = { isRecording = it },
                 sendAudioMessage = sendAudioMessage,
                 startRecording,
                 stopRecording,
                 createAudioFile,
-              )
-            IconButton(onClick = {
+            )
+            IconButton(
+                onClick = {
 
-              sendTextMessage(message.value)
-                message.value = ""
-                keyboardController?.hide()
-            },
-               ) {
+                    sendTextMessage(message.value)
+                    message.value = ""
+                    keyboardController?.hide()
+                },
+            ) {
                 Icon(
                     imageVector = Icons.Default.Send,
                     contentDescription = "Send message"
@@ -309,16 +364,17 @@ fun ChatScreen(
         navController.navigateUp()
     }
 }
+
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun ButtonWithRecording(
-    isRecording:Boolean,
+    isRecording: Boolean,
     onRecordingChanged: (Boolean) -> Unit,
     sendAudioMessage: () -> Unit,
-    startRecording: ()->Unit,
-    stopRecording: ()->Unit,
-    createAudioFile:(name:String)->File,
-                        ) {
+    startRecording: () -> Unit,
+    stopRecording: () -> Unit,
+    createAudioFile: (name: String) -> File,
+) {
 
 
     val transition = updateTransition(targetState = isRecording)
@@ -371,7 +427,7 @@ fun ButtonWithRecording(
             .scale(scale)
 
     ) {
-        Icon(painterResource(id = R.drawable.mic_24 ) , contentDescription ="" )
+        Icon(painterResource(id = R.drawable.mic_24), contentDescription = "")
     }
 }
 
