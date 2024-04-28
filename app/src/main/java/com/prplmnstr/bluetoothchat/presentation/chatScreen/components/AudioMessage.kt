@@ -66,16 +66,19 @@ fun AudioMessage(
     val context = LocalContext.current
 
     var audioPlayer by remember {
-        mutableStateOf(AndroidAudioPlayer(context))
+        mutableStateOf<AndroidAudioPlayer?>(null)
     }
 
-    if(audioFile==null){
 
-        audioFile =  createAudioFile(UUID.randomUUID().toString())
-        saveByteArrayToFile(message.audioData,audioFile!!)
-        audioPlayer.playFile(audioFile!!)
-        duration = audioPlayer.getAudioDuration().toFloat()
+        if(audioPlayer==null){
+            audioPlayer = AndroidAudioPlayer(context)
+            audioFile =  createAudioFile(UUID.randomUUID().toString())
+            saveByteArrayToFile(message.audioData,audioFile!!)
+            audioPlayer!!.playFile(audioFile!!)
+            duration = audioPlayer!!.getAudioDuration().toFloat()
+
     }
+
 
     LaunchedEffect(isPlaying) {
 
@@ -126,7 +129,7 @@ fun AudioMessage(
             IconButton(
                 onClick = {
                     if (isPlaying) {
-                        audioPlayer.stop()
+                        audioPlayer!!.stop()
                         isPlaying = !isPlaying
 
                     } else {
@@ -134,7 +137,7 @@ fun AudioMessage(
                            Toast.makeText(context, "Audio data not found. File may be deleted from device.", Toast.LENGTH_SHORT).show()
                        }else{
 
-                           audioPlayer.start()
+                           audioPlayer!!.start()
                            isPlaying = !isPlaying
                        }
                     }
@@ -166,7 +169,7 @@ fun AudioMessage(
                 value = progress,
                 onValueChange = {
                     progress = it
-                    audioPlayer.seekTo(it.toInt())
+                    audioPlayer!!.seekTo(it.toInt())
 
                 },
                 valueRange = 0f..duration,

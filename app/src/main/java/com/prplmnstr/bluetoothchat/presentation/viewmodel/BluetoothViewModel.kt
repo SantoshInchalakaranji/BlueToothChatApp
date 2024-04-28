@@ -148,21 +148,18 @@ class BluetoothViewModel @Inject constructor(
         viewModelScope.launch {
             val bluetoothMessage = audioFile?.let { bluetoothController.trySendMessage(it) }
             if (bluetoothMessage != null) {
-                _state.update {
-                    it.copy(
-                        messages = it.messages + bluetoothMessage
-                    )
-                }
-              val path =
-                when(bluetoothMessage){
-                    is BluetoothMessage.AudioMessage -> { externalStorage.saveAudioFile(UUID.randomUUID().toString(),bluetoothMessage)}
-                    is BluetoothMessage.ImageMessage -> {""}
-                    is BluetoothMessage.TextMessage -> {""}
-                }
+                val path =
+                    when(bluetoothMessage){
+                        is BluetoothMessage.AudioMessage -> { externalStorage.saveAudioFile(UUID.randomUUID().toString(),bluetoothMessage)}
+                        is BluetoothMessage.ImageMessage -> {""}
+                        is BluetoothMessage.TextMessage -> {""}
+                    }
                 Log.e("TAGG", "saveAudioFile: $path saved", )
                 insertMessage(bluetoothMessage.toMessageEntity(path))
+                }
+                sendMessage("message_tail_code")
             }
-        }
+
     }
 
     fun sendMessage(imageData: ByteArray) {
@@ -171,11 +168,6 @@ class BluetoothViewModel @Inject constructor(
             val bluetoothMessage =  bluetoothController.trySendMessage(imageData)
             if (bluetoothMessage != null) {
 
-                _state.update {
-                    it.copy(
-                        messages = it.messages + bluetoothMessage
-                    )
-                }
                 val path =
                     when(bluetoothMessage){
                         is BluetoothMessage.AudioMessage -> {""}
@@ -186,9 +178,11 @@ class BluetoothViewModel @Inject constructor(
                     }
                 Log.e("IMAGE", "saveImageFile: $path saved", )
                 insertMessage(bluetoothMessage.toMessageEntity(path))
+                }
+
             }
 
-        }
+
     }
 
 
@@ -221,17 +215,14 @@ class BluetoothViewModel @Inject constructor(
                 }
 
                 is ConnectionResult.TransferSucceeded -> {
-                    _state.update {
-                        it.copy(
-                            messages = it.messages + result.message
-                        )
-                    }
+
                     when(result.message){
                         is BluetoothMessage.AudioMessage -> {
                             val path = externalStorage.saveAudioFile(UUID.randomUUID().toString(),result.message)
                             Log.e("TAAG", "listen: $path", )
                             if(path.isNotEmpty())
                             insertMessage(result.message.toMessageEntity(path))
+
                         }
                         is BluetoothMessage.ImageMessage -> {
                             val path = externalStorage.saveImageFile(UUID.randomUUID().toString(),result.message)
@@ -328,7 +319,6 @@ class BluetoothViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             realmDaoImpl.insertMessage(messageEntity)
         }
-
         }
 
     fun getOldMessages(senderAddress:String):Flow<List<MessageEntity>>{
@@ -343,6 +333,7 @@ class BluetoothViewModel @Inject constructor(
                 messageEntityList = messages.reversed().toMutableList()
                  bluetoothMessages = messages.map { it.toBluetoothMessage(externalStorage)
                   }
+
                 _state.update {
                     it.copy(messages = bluetoothMessages.reversed(),
                         peerDevice = device)

@@ -67,6 +67,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
+import java.util.UUID
 
 
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalMaterial3Api::class)
@@ -207,7 +208,7 @@ fun ChatScreen(
 
                     when (message) {
                         is BluetoothMessage.TextMessage -> {
-
+                            if(message.text !="message_tail_code")
                             ChatMessage(
                                 message = message,
                                 modifier = Modifier
@@ -405,12 +406,9 @@ fun ButtonWithRecording(
 
                         onRecordingChanged(true)
                         coroutineScope.launch(Dispatchers.IO) {
-                            createAudioFile("new_recording")
+                            createAudioFile(UUID.randomUUID().toString())
                             delay(100)
-
                             startRecording()
-
-
                         }
                     }
 
@@ -418,8 +416,6 @@ fun ButtonWithRecording(
                         onRecordingChanged(false)
                         stopRecording()
                         sendAudioMessage()
-
-
                     }
                 }
                 true // Returning true to indicate the event has been consumed
